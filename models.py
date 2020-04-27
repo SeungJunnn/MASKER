@@ -21,9 +21,9 @@ class ExposureNet(nn.Module):
             attention_masks.append(seq_mask)
         attention_masks = torch.FloatTensor(attention_masks).to(device)
 
-        o_out, _ = self.bert(x[:,0], attention_masks) #no pooled output
-        m_out, _ = self.bert(x[:,1], attention_masks)
-        w_out, _ = self.bert(x[:,2], attention_masks)
+        _, o_out = self.bert(x[:,0], attention_masks) #pooled output
+        _, m_out = self.bert(x[:,1], attention_masks)
+        _, w_out = self.bert(x[:,2], attention_masks)
         out = o_out[:,0,:]
         w_out = w_out[:,0,:]
 
@@ -50,7 +50,7 @@ class MaskNet(nn.Module): #layer for MLM, MKLM
             attention_masks.append(seq_mask)
         attention_masks = torch.FloatTensor(attention_masks).to(device)
 
-        o_out, _ = self.bert(x[:,0], attention_masks) #no pooled output
+        o_out, _ = self.bert(x[:,0], attention_masks) #pooled output
         m_out, _ = self.bert(x[:,1], attention_masks)
         out = o_out[:,0,:]
 
