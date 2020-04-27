@@ -175,7 +175,7 @@ def auroc(logits, labels, num_id_class, model_type):
         neg=fp+tn
         return fpr, tpr, pos, neg
 
-    thresholds=ths_list(0,1,2000)
+    thresholds=ths_list(0,1,10000)
 
     softmax = torch.nn.Softmax(dim=1)
     sigmoid = torch.nn.Sigmoid()
