@@ -8,12 +8,18 @@ import random
 num_total_classes={'news':20, 'review':50, 'imdb':2, 'food':2, 'sst2':2,'reuters':2}
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+MASK_TOKEN=50264 # or 104
+CLS_TOKEN=0 #or 101
+PAD_TOKEN=1 #or 0
+
 def tokenization(tokenizer, raw_text, max_len):
     input_ids = torch.tensor(tokenizer.encode(raw_text, add_special_tokens=True))
     if len(input_ids) > max_len:
         input_ids = input_ids[:max_len]
     elif len(input_ids) < max_len:
-        input_ids = torch.cat((input_ids,(torch.zeros((max_len-len(input_ids)), dtype=torch.long))))
+        pad_tensor=torch.zeros((max_len-len(input_ids)), dtype=torch.long)
+        pad_tensor.fill_(tokenizer.convert_tokens_to_ids(tokenizer.pad_token))
+        input_ids = torch.cat((input_ids,pad_tensor))
     return input_ids
 
 def one_hot(labels, n_classes):
@@ -52,9 +58,9 @@ def convert_random_to_mask(input_ids, label):
     m_input_ids = torch.empty(input_ids.shape, dtype=torch.long)
     m_input_ids.data = input_ids.clone()
     for i,idx in enumerate(input_ids):
-        if random.random() < 0.15:
+        if random.random() < 0.15 and idx != CLS_TOKEN:
             labels[i] = m_input_ids[i]
-            m_input_ids[i] = 103 #[MASK] token
+            m_input_ids[i] = MASK_TOKEN #[MASK] token
     labels[-1] = int(label)
     return m_input_ids, labels
 
@@ -66,10 +72,10 @@ def convert_keyword_to_mask(input_ids, keytokens, label):
 
     for i,idx in enumerate(input_ids):
         if random.random()<0.5:
-            if idx in keytokens:
+            if idx in keytokens and idx != CLS_TOKEN:
                 labels[i] = keytokens.index(idx)
-                m_input_ids[i] = 103 #[MASK] token
-            elif idx ==0:
+                m_input_ids[i] = MASK_TOKEN #[MASK] token
+            elif idx==PAD_TOKEN:
                 break
     labels[-1] = int(label)
     return m_input_ids, labels
@@ -130,8 +136,7 @@ def compute_loss(logits, labels, n_classes, model_type, task, uniform, device):
         ss_logits, cls_logits, uni_logits = logits
         ss_logits = ss_logits.permute(0,2,1)
         ss_loss = c1(ss_logits, labels[:,:-1])
-
-        uni_loss = kl(uni_logits, uniform_labels(labels[:,-1],n_classes, model_type).to(device))
+        uni_loss = kl(F.log_softmax(uni_logits,dim=1), F.softmax(uniform_labels(labels[:,-1],n_classes, model_type),dim=1).to(device))
         labels=labels[:,-1]
 
     if model_type =='softmax':
