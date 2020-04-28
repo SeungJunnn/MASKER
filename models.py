@@ -22,15 +22,15 @@ class ExposureNet(nn.Module):
         attention_masks = torch.FloatTensor(attention_masks).to(device)
 
         _, o_out = self.bert(x[:,0], attention_masks) #pooled output
-        _, m_out = self.bert(x[:,1], attention_masks)
+        m_out,_ = self.bert(x[:,1], attention_masks)
         _, w_out = self.bert(x[:,2], attention_masks)
-        out = o_out[:,0,:]
-        w_out = w_out[:,0,:]
+        #o_out = o_out[:,0,:] #only for non-pooled output
+        #w_out = w_out[:,0,:] #only for non-pooled output
 
         x = F.relu(self.fc1(m_out))
         x = self.dropout(x)
         logits1 = self.fc2(x) #for self-supervised task 
-        logits2 = self.fc3(out) #For classification
+        logits2 = self.fc3(o_out) #For classification
         logits3 = self.fc3(w_out) #For outlier
         return logits1, logits2, logits3
 
@@ -52,7 +52,7 @@ class MaskNet(nn.Module): #layer for MLM, MKLM
 
         o_out, _ = self.bert(x[:,0], attention_masks) #pooled output
         m_out, _ = self.bert(x[:,1], attention_masks)
-        out = o_out[:,0,:]
+        #out = o_out[:,0,:]
 
         x = F.relu(self.fc1(m_out))
         x = self.dropout(x)
