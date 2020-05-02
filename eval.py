@@ -10,8 +10,10 @@ from torch.utils.data import DataLoader
 from dataload import *
 from data.utils import *
 from models import ExposureNet, MaskNet, FineTuningNet
-
 from transformers import RobertaConfig, RobertaModel, RobertaTokenizer
+
+import logging
+logging.getLogger("transformers.tokenization_utils").setLevel(logging.ERROR)
 
 MODELS = {'bert' : (RobertaModel, RobertaTokenizer, 'roberta-base')}
 
@@ -34,8 +36,8 @@ use_outer_ood = 'review'
 
 path = './models'
 model_list = os.listdir(path)
-data_list = ['news','review','reuters','imdb','sst2','food']
-model_list = ['vanilla_softmax_news_5','vanilla_softmax_news_10','exposure_sigmoid_news_5','exposure_sigmoid_news_10','vanilla_softmax_news_20','exposure_sigmoid_news_20','vanilla_softmax_review_50','exposure_sigmoid_review_50']
+data_list = ['reuters','news','review','imdb','sst2','food']
+model_list = ['vanilla_softmax_news_20','exposure_sigmoid_news_20','vanilla_softmax_review_50','exposure_sigmoid_review_50']
 
 for model_name in model_list:
     print('***** '+model_name+' *****')
@@ -45,7 +47,7 @@ for model_name in model_list:
     num_id_class=int(num_id_class)
     os.chdir("../data")
     _, id_data = VanillaDataload(datatype, tokenizer, [i for i in range(num_id_class)], max_len=512)
-    if num_total_classes[datatype]!=int(num_id_class): #no split
+    if num_total_classes[datatype]!=int(num_id_class): #split
         _,ood_data=VanillaDataload(datatype, tokenizer, [i for i in range(num_id_class,num_total_classes[datatype])], max_len=512)
 
         test_data = id_data+ood_data
@@ -136,4 +138,5 @@ for model_name in model_list:
 
             auroc(logits, labels, num_id_class, model_type)
             print('**********')
-            os.chdir("../")
+            os.chdir("../data")
+        os.chdir('../')
