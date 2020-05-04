@@ -8,9 +8,18 @@ import random
 num_total_classes={'news':20, 'review':50, 'imdb':2, 'food':2, 'sst2':2,'reuters':2}
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-MASK_TOKEN=50264 # or 104
-CLS_TOKEN=0 #or 101
-PAD_TOKEN=1 #or 0
+MODEL='bert'
+
+if MODEL=='roberta':
+    MASK_TOKEN=50264 # or 104
+    CLS_TOKEN=0 #or 101
+    PAD_TOKEN=1 #or 0
+    SEP_TOKEN=2
+elif MODEL=='bert':
+    MASK_TOKEN=103 # or 104
+    SEP_TOKEN=102
+    CLS_TOKEN=101 #or 101
+    PAD_TOKEN=0 #or 0
 
 def tokenization(tokenizer, raw_text, max_len):
     input_ids = torch.tensor(tokenizer.encode(raw_text, add_special_tokens=True))
@@ -72,7 +81,7 @@ def convert_keyword_to_mask(input_ids, keytokens, label):
 
     for i,idx in enumerate(input_ids):
         if random.random()<0.5:
-            if idx in keytokens and idx != CLS_TOKEN:
+            if idx in keytokens and idx != CLS_TOKEN and idx != SEP_TOKEN:
                 labels[i] = keytokens.index(idx)
                 m_input_ids[i] = MASK_TOKEN #[MASK] token
             elif idx==PAD_TOKEN:
