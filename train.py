@@ -68,7 +68,7 @@ def main():
     if args.task == 'vanilla':
         train_data, test_data = VanillaDataload(args.datatype, tokenizer, sample_classes, args.max_len)
         model=FineTuningNet(bert, n_classes)
-        optimizer = optim.Adam([{'params': model.bert.parameters(), 'lr' : 5e-6}, {'params': model.fc.parameters()} ], lr=0.003)
+        optimizer = AdamW(model.parameters(), lr = 2e-5, eps = 1e-8)
     elif args.task == 'mklm':
         if not args.use_outlier_exposure:
             train_data, test_data, keytokens = KeywordMaskedDataload(args.keyword_type, args.datatype, args.keyword_size, tokenizer, sample_classes, args.max_len)
@@ -76,7 +76,8 @@ def main():
         else:
             train_data, test_data, keytokens = WindowMaskedDataload(args.keyword_type, args.datatype, args.keyword_size, tokenizer, sample_classes, args.max_len, for_infer=False)
             model=ExposureNet(bert, len(keytokens), n_classes)
-        optimizer = optim.Adam([{'params': model.bert.parameters(), 'lr' : 5e-6}, {'params': model.fc1.parameters(), 'lr' : 0.0001}], lr=0.0003)
+        #optimizer = optim.AdamW([{'params': model.bert.parameters(), 'lr' : 1e-5} ], lr=2e-5, eps=1e-8)
+        optimizer = AdamW(model.parameters(), lr = 2e-5, eps = 1e-8)
 
     traindataset = Dataset(filename=train_data)
     testdataset = Dataset(filename=test_data)
