@@ -1,76 +1,60 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-from torch.utils.data import DataLoader
-from data.utils import *
 
-class ExposureNet(nn.Module):
-    def __init__(self, bert, vocab_size, n_classes):
-        super(ExposureNet, self).__init__()
-        self.bert = bert
-        self.fc1 = nn.Linear(768, 768)
-        self.fc2 = nn.Linear(768, vocab_size)
-        self.dropout = nn.Dropout(0.2)
-        self.fc3 = nn.Linear(768,n_classes) #layer for classification
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    def forward(self, x): #x contains 2 input_ids : [non-masked, masked]
-        attention_masks=[]
-        for seq in x[:,0]:
-            seq_mask = [float(i>0) for i in seq]
-            attention_masks.append(seq_mask)
-        attention_masks = torch.FloatTensor(attention_masks).to(device)
 
-        _, o_out = self.bert(x[:,0], attention_masks) #pooled output
-        m_out,_ = self.bert(x[:,1], attention_masks)
-        _, w_out = self.bert(x[:,2], attention_masks)
-        #o_out = o_out[:,0,:] #only for non-pooled output
-        #w_out = w_out[:,0,:] #only for non-pooled output
+class BaseNet(nn.Module):
+    """ Base network """
 
-        x = F.relu(self.fc1(m_out))
-        x = self.dropout(x)
-        logits1 = self.fc2(x) #for self-supervised task 
-        logits2 = self.fc3(o_out) #For classification
-        logits3 = self.fc3(w_out) #For outlier
-        return logits1, logits2, logits3
+    def __init__(self, backbone, n_classes):
+        super(BaseNet, self).__init__()
+        self.backbone = backbone
+        self.net_cls = nn.Linear(768, n_classes)  # classification layer
 
-class MaskNet(nn.Module): #layer for MLM, MKLM
-    def __init__(self, bert, vocab_size, n_classes):
-        super(MaskNet, self).__init__()
-        self.bert = bert
-        self.fc1 = nn.Linear(768, 768)
-        self.fc2 = nn.Linear(768, vocab_size)
-        self.dropout = nn.Dropout(0.2)
-        self.fc3 = nn.Linear(768,n_classes) #layer for classification
-
-    def forward(self, x): #x contains 2 input_ids : [non-masked, masked]
-        attention_masks=[]
-        for seq in x[:,0]:
-            seq_mask = [float(i>0) for i in seq]
-            attention_masks.append(seq_mask)
-        attention_masks = torch.FloatTensor(attention_masks).to(device)
-
-        o_out, _ = self.bert(x[:,0], attention_masks) #pooled output
-        m_out, _ = self.bert(x[:,1], attention_masks)
-        #out = o_out[:,0,:]
-
-        x = F.relu(self.fc1(m_out))
-        x = self.dropout(x)
-        logits1 = self.fc2(x) #for self-supervised task 
-        logits2 = self.fc3(out) #For classification
-        return logits1, logits2
-
-class FineTuningNet(nn.Module): #Layer for normal fine-tuning
-    def __init__(self, bert, n_classes):
-        super(FineTuningNet, self).__init__()
-        self.bert = bert
-        self.fc = nn.Linear(768, n_classes)
     def forward(self, x):
-        attention_masks=[]
-        for seq in x:
-            seq_mask = [float(i>0) for i in seq]
-            attention_masks.append(seq_mask)
-        attention_masks = torch.FloatTensor(attention_masks).to(device)
-        _, x = self.bert(x, attention_masks) #pooled output
-        x = self.fc(x)
-        return x
+        attention_mask = (x > 0).float()
+        out_h, out_p = self.backbone(x, attention_mask)  # hidden, pooled
+
+        out_cls = self.net_cls(out_p)
+        return out_cls
+
+
+class MaskerNet(nn.Module):
+    """ Makser network """
+
+    def __init__(self, backbone, n_classes, vocab_size):
+        super(MaskerNet, self).__init__()
+        self.backbone = backbone
+        self.net_cls = nn.Linear(768, n_classes)  # classification layer
+        self.net_ssl = nn.Sequential(
+            nn.Linear(768, 768),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(768, vocab_size),
+        )  # self-supervision layer
+
+    def forward(self, x, training=False):
+        if training:  # training mode
+            x_orig, x_mask, x_ood = x.chunk(3, dim=1)  # (original, masked, outlier)
+            attention_mask = (x_orig > 0).float()
+
+            out_cls = self.backbone(x_orig, attention_mask)[1]  # pooled feature
+            out_cls = self.net_cls(out_cls)  # classification
+
+            out_ssl = self.backbone(x_mask, attention_mask)[0]  # hidden feature
+            out_ssl = self.net_ssl(out_ssl)  # self-supervision
+
+            out_ood = self.backbone(x_ood, attention_mask)[1]  # pooled feature
+            out_ood = self.net_cls(out_ood)  # classification (outlier)
+
+            return out_cls, out_ssl, out_ood
+
+        else:  # inference mode
+            attention_mask = (x > 0).float()
+
+            out_cls = self.backbone(x, attention_mask)[1]  # pooled feature
+            out_cls = self.net_cls(out_cls)  # classification
+
+            return out_cls
+

@@ -1,11 +1,17 @@
 # MASKER
 
-After download the codes, run the code like below:
+## Run experiments 
 
-python train.py --datatype imdb --sampling_rate 1.0 --model_type softmax --task vanilla
+Run vanilla BERT
+```
+python train.py --dataset news --sampling_rate 0.1 --seed 0 \
+    --backbone bert --model_type base --classifier_type softmax
+```
 
-This is the code for training vanilla BERT. You can train BERT+MASKER after finishing code above.
+Run MASKER
+```
+python train.py --dataset news --sampling_rate 0.1 --seed 0 \
+    --backbone bert --model_type masker --classifier_type sigmoid \
+    --keyword_type random --lambda_ssl 0.001 --lambda_ood 0.0001
+```
 
-To train BERT+MASKER, run the code like below
-
-python train.py --datatype imdb --sampling_rate 1.0 --model_type sigmoid --task mklm --keyword_type attention --use_outlier_exposure True
