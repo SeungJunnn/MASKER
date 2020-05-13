@@ -6,13 +6,13 @@ from torch.utils.data import TensorDataset
 
 
 class MaskedDataset(object):
-    def __init__(self, base_dataset, keyword_type, keyword_num):
+    def __init__(self, base_dataset, keyword=None):
+        assert base_dataset.train_dataset is not None  # train dataset should be exists
+
         self.base_dataset = base_dataset
-        self.keyword_type = keyword_type
-        if self.keyword_type in ['tfidf', 'attention']:
-            self.keyword_num = keyword_num  # specify number of keywords
-        else:
-            self.keyword_num = len(base_dataset.tokenizer)  # use full tokens
+        self.keyword = keyword.keyword  # keyword values (list)
+        self.keyword_type = keyword.keyword_type  # keyword type
+        self.keyword_num = len(self.keyword)  # number of keywords
 
         if not self._check_exists():
             self._preprocess()
@@ -24,8 +24,12 @@ class MaskedDataset(object):
 
     @property
     def _train_path(self):
+        key_type = self.keyword_type
+        key_num = len(self.keyword)
+
         train_path = self.base_dataset._train_path
-        train_path = train_path.replace('train', 'train_{}_{}'.format(self.keyword_type, self.keyword_num))
+        train_path = train_path.replace('train', 'train_{}_{}'.format(key_type, key_num))
+
         return train_path
 
     def _check_exists(self):
@@ -39,33 +43,18 @@ class MaskedDataset(object):
         dataset = self.base_dataset.train_dataset
         seed = self.base_dataset.seed
 
-        if self.keyword_type in ['tfidf', 'attention']:
-            if self.keyword_type == 'tfidf':
-                keyword = get_tfidf_keyword()
-            else:
-                keyword = get_attention_keyword()
-
-            masked_dataset = get_masked_dataset(tokenizer, dataset, keyword=keyword,
-                                                seed=seed, key_mask_ratio=0.5)
-        elif self.keyword_type == 'random':
-            masked_dataset = get_masked_dataset(tokenizer, dataset,
-                                                seed=seed, key_mask_ratio=0.15)
-        else:
-            raise ValueError('No matching keyword type')
+        if self.keyword_type == 'random':  # mask random words with p = 0.15
+            masked_dataset = _mask_dataset(tokenizer, dataset,
+                                           seed=seed, key_mask_ratio=0.15)
+        else:  # mask keywords with p = 0.5
+            masked_dataset = _mask_dataset(tokenizer, dataset, keyword=self.keyword,
+                                           seed=seed, key_mask_ratio=0.5)
 
         torch.save(masked_dataset, self._train_path)
 
 
-def get_tfidf_keyword():
-    raise NotImplementedError
-
-
-def get_attention_keyword():
-    raise NotImplementedError
-
-
-def get_masked_dataset(tokenizer, dataset, keyword=None,
-                       seed=0, key_mask_ratio=0.5, out_mask_ratio=0.9):
+def _mask_dataset(tokenizer, dataset, keyword=None,
+                  seed=0, key_mask_ratio=0.5, out_mask_ratio=0.9):
 
     CLS_TOKEN = tokenizer.cls_token_id
     PAD_TOKEN = tokenizer.pad_token_id

@@ -6,8 +6,7 @@ import torch
 from torch.utils.data import TensorDataset
 import numpy as np
 
-HOME = os.path.expanduser('~')
-DATA_PATH = os.path.join(HOME, 'data_masker')
+from common import DATA_PATH
 
 
 def tokenize(tokenizer, raw_text, max_len=512):
@@ -234,6 +233,10 @@ class IMDBDataset(BaseDataset):
         for line in lines:
             toks = line.split('\t')
 
+            if len(toks) > 5:  # text contains tab
+                text = '\t'.join(toks[2:-2])
+                toks = toks[:2] + [text] + toks[-2:]
+
             token = tokenize(self.tokenizer, toks[2], max_len=self.max_len)
 
             if toks[3] == 'unsup':
@@ -379,7 +382,7 @@ class ReutersDataset(BaseDataset):
                 text = f.read()
 
             token = tokenize(self.tokenizer, text, max_len=self.max_len)
-            label = torch.tensor(51).long()  # pre-defined class
+            label = torch.tensor(-1).long()  # OOD class: -1
 
             tokens.append(token)
             labels.append(label)

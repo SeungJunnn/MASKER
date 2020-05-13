@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from data import get_base_dataset, get_masked_dataset
-from models import BaseNet, MaskerNet
+from models import load_backbone, BaseNet, MaskerNet
 from training import train_base, train_masker
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -41,8 +41,12 @@ def parse_args():
     parser.add_argument("--keyword_type", help='keyword type (random|tfidf|attention|etc.)',
                         choices=['random', 'tfidf', 'attention'],
                         default='attention', type=str)
-    parser.add_argument("--keyword_num", help='number of keywords for each sentence',
+    parser.add_argument("--keyword_per_class", help='number of keywords for each class',
                         default=10, type=int)
+    parser.add_argument("--pretrained_backbone", help='backbone for pre-trained model (None = args.backbone)',
+                        default=None, type=str)
+    parser.add_argument("--pretrained_path", help='path for the pre-trained model',
+                        default=None, type=str)
     parser.add_argument("--lambda_ssl", help='weight for keyword reconstruction loss',
                         default=0.001, type=float)
     parser.add_argument("--lambda_ood", help='weight for outlier regularization loss',
@@ -66,32 +70,18 @@ def main():
         else:
             args.batch_size = 16
     else:
-        args.batch_size = 1
-        # args.batch_size = 32
+        args.batch_size = 32
 
-    ### load backbone and tokenizer ###
     print('Loading pre-trained backbone networks...')
-    if args.backbone == 'bert':
-        from transformers import BertModel, BertTokenizer
-        backbone = BertModel.from_pretrained('bert-base-uncased')
-        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-        tokenizer.name = 'bert-base-uncased'
-    elif args.backbone == 'roberta':
-        from transformers import RobertaModel, RobertaTokenizer
-        backbone = RobertaModel.from_pretrained('roberta-base')
-        tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
-        tokenizer.name = 'roberta-base'
-    else:
-        raise ValueError('No matching backbone network')
+    backbone, tokenizer = load_backbone(args.backbone)
 
-    ### initialize model and dataset ###
     print('Initializing model and dataset..')
     if args.model_type == 'base':
         dataset = get_base_dataset(args.dataset, tokenizer,
                                    args.max_len, args.sub_ratio, args.seed)
         model = BaseNet(backbone, dataset.n_classes).to(device)
     else:
-        dataset = get_masked_dataset(args.dataset, tokenizer, args.keyword_type, args.keyword_num,
+        dataset = get_masked_dataset(args, args.dataset, tokenizer, args.keyword_type, args.keyword_per_class,
                                      args.max_len, args.sub_ratio, args.seed)
         model = MaskerNet(backbone, dataset.n_classes, dataset.keyword_num).to(device)
 
@@ -100,7 +90,6 @@ def main():
 
     optimizer = optim.AdamW(model.parameters(), lr=2e-5, eps=1e-8)
 
-    ### train model ###
     print('Training model..')
     if args.model_type == 'base':
         train_base(args, dataset, model, optimizer)

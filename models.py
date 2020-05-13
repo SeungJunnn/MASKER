@@ -4,12 +4,30 @@ import torch.nn as nn
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
+def load_backbone(name, output_attentions=False):
+    if name == 'bert':
+        from transformers import BertModel, BertTokenizer
+        backbone = BertModel.from_pretrained('bert-base-uncased', output_attentions=output_attentions)
+        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+        tokenizer.name = 'bert-base-uncased'
+    elif name == 'roberta':
+        from transformers import RobertaModel, RobertaTokenizer
+        backbone = RobertaModel.from_pretrained('roberta-base', output_attentions=output_attentions)
+        tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
+        tokenizer.name = 'roberta-base'
+    else:
+        raise ValueError('No matching backbone network')
+
+    return backbone, tokenizer
+
+
 class BaseNet(nn.Module):
     """ Base network """
 
     def __init__(self, backbone, n_classes):
         super(BaseNet, self).__init__()
         self.backbone = backbone
+        self.n_classes = n_classes
         self.net_cls = nn.Linear(768, n_classes)  # classification layer
 
     def forward(self, x):
@@ -26,13 +44,16 @@ class MaskerNet(nn.Module):
     def __init__(self, backbone, n_classes, vocab_size):
         super(MaskerNet, self).__init__()
         self.backbone = backbone
+        self.n_classes = n_classes
+        self.vocab_size = vocab_size
+
         self.net_cls = nn.Linear(768, n_classes)  # classification layer
-        self.net_ssl = nn.Sequential(
+        self.net_ssl = nn.Sequential(  # self-supervision layer
             nn.Linear(768, 768),
             nn.ReLU(),
             nn.Dropout(0.2),
             nn.Linear(768, vocab_size),
-        )  # self-supervision layer
+        )
 
     def forward(self, x, training=False):
         if training:  # training mode
