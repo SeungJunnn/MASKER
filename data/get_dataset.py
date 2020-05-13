@@ -39,6 +39,30 @@ def get_masked_dataset(args, data_name, tokenizer, keyword_type, keyword_per_cla
 
     dataset = get_base_dataset(data_name, tokenizer, max_len, sub_ratio, seed)  # base dataset
 
+    keyword_path = '{}_{}.pth'.format(keyword_type, keyword_per_class)
+    keyword_path = os.path.join(dataset.root_dir, keyword_path)
+
+    if os.path.exists(keyword_path):
+        keyword = torch.load(keyword_path)
+    else:
+        keyword = get_keyword(args, dataset, tokenizer, keyword_type, keyword_per_class)
+        torch.save(keyword, keyword_path)
+
+    masked_dataset = MaskedDataset(dataset, keyword)
+
+    return masked_dataset
+
+
+class Keyword(object):
+    def __init__(self, keyword_type, keyword):
+        self.keyword_type = keyword_type
+        self.keyword = keyword
+
+    def __len__(self):
+        return len(self.keyword)
+
+
+def get_keyword(args, dataset, tokenizer, keyword_type, keyword_per_class):
     if keyword_type == 'tfidf':
         keyword = get_tfidf_keyword(dataset, keyword_per_class)
         keyword = Keyword('tfidf', keyword)
@@ -62,22 +86,13 @@ def get_masked_dataset(args, data_name, tokenizer, keyword_type, keyword_per_cla
         keyword = get_attention_keyword(dataset, attn_model, keyword_per_class)
         keyword = Keyword('attention', keyword)
 
+        del attn_model  # free GPU memory
+
     else:  # random
         keyword = list(tokenizer.vocab.values())  # all words
         keyword = Keyword('random', keyword)
 
-    masked_dataset = MaskedDataset(dataset, keyword)
-
-    return masked_dataset
-
-
-class Keyword(object):
-    def __init__(self, keyword_type, keyword):
-        self.keyword_type = keyword_type
-        self.keyword = keyword
-
-    def __len__(self):
-        return len(self.keyword)
+    return keyword
 
 
 def get_tfidf_keyword(dataset, keyword_per_class=10):
@@ -101,7 +116,8 @@ def get_attention_keyword(dataset, attn_model, keyword_per_class=10):
         with torch.no_grad():
             out_h, out_p, attention_layers = attn_model(tokens)
 
-        attention = attention_layers[-1]  # attention of final layer
+        attention = attention_layers[-1]  # attention of final layer (batch_size, num_heads, max_len, max_len)
+        attention = attention.sum(dim=1)  # sum over attention heads (batch_size, max_len, max_len)
 
         for i in range(attention.size(0)):  # batch_size
             for j in range(attention.size(-1)):  # max_len
@@ -110,7 +126,7 @@ def get_attention_keyword(dataset, attn_model, keyword_per_class=10):
                 if token in SPECIAL_TOKENS:  # skip special token
                     continue
 
-                score = attention[i, 0, 0, j]  # CLS token
+                score = attention[i][0][j]  # 1st token = CLS token
 
                 attn_score[token] += score.item()
                 attn_freq[token] += 1

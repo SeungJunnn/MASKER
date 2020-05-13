@@ -36,20 +36,26 @@ def create_tensor_dataset(tokens, labels):
 
 
 class BaseDataset(metaclass=ABCMeta):
-    def __init__(self, total_class, tokenizer, max_len=512, sub_ratio=1.0, seed=0):
+    def __init__(self, data_name, total_class, tokenizer,
+                 max_len=512, sub_ratio=1.0, seed=0, test_only=False):
+
+        self.data_name = data_name
+        self.total_class = total_class
+        self.root_dir = os.path.join(DATA_PATH, data_name)
+
         self.tokenizer = tokenizer
         self.max_len = max_len
         self.sub_ratio = sub_ratio
         self.seed = seed
+        self.test_only = test_only
 
-        self.total_class = total_class
         self.n_classes = int(self.total_class * self.sub_ratio)
         self.class_idx = self._get_subclass()
 
         if not self._check_exists():
             self._preprocess()
 
-        if self._train_path is not None:  # train dataset can be omitted
+        if not self.test_only:
             self.train_dataset = torch.load(self._train_path)
         else:
             self._train_dataset = None
@@ -62,17 +68,25 @@ class BaseDataset(metaclass=ABCMeta):
         return np.sort(class_idx).tolist()
 
     @property
-    @abstractmethod
-    def _train_path(self):
-        pass
+    def _base_path(self):
+        if self.sub_ratio < 1.0:
+            base_path = '{}_{}_sub_{:.2f}_seed_{:d}'.format(
+                self.data_name, self.tokenizer.name, self.sub_ratio, self.seed)
+        else:
+            base_path = '{}_{}'.format(self.data_name, self.tokenizer.name)
+
+        return os.path.join(self.root_dir, base_path)
 
     @property
-    @abstractmethod
+    def _train_path(self):
+        return self._base_path + '_train.pth'
+
+    @property
     def _test_path(self):
-        pass
+        return self._base_path + '_test.pth'
 
     def _check_exists(self):
-        if (self._train_path is not None) and (not os.path.exists(self._train_path)):
+        if not self.test_only and not os.path.exists(self._train_path):
             return False
         elif not os.path.exists(self._test_path):
             return False
@@ -86,20 +100,7 @@ class BaseDataset(metaclass=ABCMeta):
 
 class NewsDataset(BaseDataset):
     def __init__(self, tokenizer, max_len=512, sub_ratio=1.0, seed=0):
-        total_class = 20
-        super(NewsDataset, self).__init__(total_class, tokenizer, max_len, sub_ratio, seed)
-
-    @property
-    def _train_path(self):
-        train_path = 'news/news_{}_sub_{:.2f}_seed_{:d}_train.pth'.format(
-            self.tokenizer.name, self.sub_ratio, self.seed)
-        return os.path.join(DATA_PATH, train_path)
-
-    @property
-    def _test_path(self):
-        test_path = 'news/news_{}_sub_{:.2f}_seed_{:d}_test.pth'.format(
-            self.tokenizer.name, self.sub_ratio, self.seed)
-        return os.path.join(DATA_PATH, test_path)
+        super(NewsDataset, self).__init__('news', 20, tokenizer, max_len, sub_ratio, seed)
 
     def _preprocess(self):
         print('Pre-processing news dataset...')
@@ -109,7 +110,7 @@ class NewsDataset(BaseDataset):
     def _preprocess_sub(self, mode='train'):
         assert mode in ['train', 'test']
 
-        source_path = os.path.join(DATA_PATH, 'news/{}.csv'.format(mode))
+        source_path = os.path.join(self.root_dir, '{}.csv'.format(mode))
         with open(source_path, encoding='utf-8') as f:
             lines = f.readlines()
 
@@ -122,7 +123,7 @@ class NewsDataset(BaseDataset):
             if not int(toks[1]) in self.class_idx:  # only selected classes
                 continue
 
-            path = os.path.join(DATA_PATH, 'news/{}'.format(toks[0]))
+            path = os.path.join(self.root_dir, '{}'.format(toks[0]))
             with open(path, encoding='utf-8', errors='ignore') as f:
                 text = f.read()
 
@@ -144,25 +145,12 @@ class NewsDataset(BaseDataset):
 
 class ReviewDataset(BaseDataset):
     def __init__(self, tokenizer, max_len=512, sub_ratio=1.0, seed=0):
-        total_class = 50
         self.split_ratio = 0.7  # split ratio for train/test dataset
-        super(ReviewDataset, self).__init__(total_class, tokenizer, max_len, sub_ratio, seed)
-
-    @property
-    def _train_path(self):
-        train_path = 'review/review_{}_sub_{:.2f}_seed_{:d}_train.pth'.format(
-            self.tokenizer.name, self.sub_ratio, self.seed)
-        return os.path.join(DATA_PATH, train_path)
-
-    @property
-    def _test_path(self):
-        test_path = 'review/review_{}_sub_{:.2f}_seed_{:d}_test.pth'.format(
-            self.tokenizer.name, self.sub_ratio, self.seed)
-        return os.path.join(DATA_PATH, test_path)
+        super(ReviewDataset, self).__init__('review', 50, tokenizer, max_len, sub_ratio, seed)
 
     def _preprocess(self):
         print('Pre-processing review dataset...')
-        source_path = os.path.join(DATA_PATH, 'review/50EleReviews.json')
+        source_path = os.path.join(self.root_dir, '50EleReviews.json')
         with open(source_path, encoding='utf-8') as f:
             docs = json.load(f)
 
@@ -207,21 +195,12 @@ class ReviewDataset(BaseDataset):
 
 class IMDBDataset(BaseDataset):
     def __init__(self, tokenizer, max_len=512):
-        total_class = 2
         self.class_dict = {'pos': 1, 'neg': 0}
-        super(IMDBDataset, self).__init__(total_class, tokenizer, max_len)
-
-    @property
-    def _train_path(self):
-        return os.path.join(DATA_PATH, 'imdb/imdb_train.pth')
-
-    @property
-    def _test_path(self):
-        return os.path.join(DATA_PATH, 'imdb/imdb_test.pth')
+        super(IMDBDataset, self).__init__('imdb', 2, tokenizer, max_len)
 
     def _preprocess(self):
         print('Pre-processing imdb dataset...')
-        source_path = os.path.join(DATA_PATH, 'imdb/imdb.txt')
+        source_path = os.path.join(self.root_dir, 'imdb.txt')
         with open(source_path, encoding='utf-8') as f:
             lines = f.readlines()
 
@@ -261,16 +240,7 @@ class IMDBDataset(BaseDataset):
 
 class SST2Dataset(BaseDataset):
     def __init__(self, tokenizer, max_len=512):
-        total_class = 2
-        super(SST2Dataset, self).__init__(total_class, tokenizer, max_len)
-
-    @property
-    def _train_path(self):
-        return os.path.join(DATA_PATH, 'sst2/sst2_train.pth')
-
-    @property
-    def _test_path(self):
-        return os.path.join(DATA_PATH, 'sst2/sst2_test.pth')
+        super(SST2Dataset, self).__init__('sst2', 2, tokenizer, max_len)
 
     def _preprocess(self):
         print('Pre-processing sst2 dataset...')
@@ -280,7 +250,7 @@ class SST2Dataset(BaseDataset):
     def _preprocess_sub(self, mode='train'):
         assert mode in ['train', 'dev']
 
-        source_path = os.path.join(DATA_PATH, 'sst2/sst2_{}.tsv'.format(mode))
+        source_path = os.path.join(self.root_dir, 'sst2_{}.tsv'.format(mode))
         with open(source_path, encoding='utf-8') as f:
             lines = f.readlines()
 
@@ -306,16 +276,7 @@ class SST2Dataset(BaseDataset):
 
 class FoodDataset(BaseDataset):
     def __init__(self, tokenizer, max_len=512):
-        total_class = 2
-        super(FoodDataset, self).__init__(total_class, tokenizer, max_len)
-
-    @property
-    def _train_path(self):
-        return os.path.join(DATA_PATH, 'food/food_train.pth')
-
-    @property
-    def _test_path(self):
-        return os.path.join(DATA_PATH, 'food/food_test.pth')
+        super(FoodDataset, self).__init__('food', 2, tokenizer, max_len)
 
     def _preprocess(self):
         print('Pre-processing food dataset...')
@@ -325,7 +286,7 @@ class FoodDataset(BaseDataset):
     def _preprocess_sub(self, mode='train'):
         assert mode in ['train', 'test']
 
-        source_path = os.path.join(DATA_PATH, 'food/foods_{}.txt'.format(mode))
+        source_path = os.path.join(self.root_dir, 'foods_{}.txt'.format(mode))
         with open(source_path, encoding='utf-8') as f:
             lines = f.readlines()
 
@@ -358,16 +319,7 @@ class FoodDataset(BaseDataset):
 
 class ReutersDataset(BaseDataset):
     def __init__(self, tokenizer, max_len=512):
-        total_class = 2
-        super(ReutersDataset, self).__init__(total_class, tokenizer, max_len)
-
-    @property
-    def _train_path(self):
-        return None
-
-    @property
-    def _test_path(self):
-        return os.path.join(DATA_PATH, 'reuters/reuters_test.pth')
+        super(ReutersDataset, self).__init__('reuters', 2, tokenizer, max_len, test_only=True)
 
     def _preprocess(self):
         print('Pre-processing reuters dataset...')
@@ -375,7 +327,7 @@ class ReutersDataset(BaseDataset):
         tokens = []
         labels = []
 
-        base_path = os.path.join(DATA_PATH, 'reuters/reuters_test')
+        base_path = os.path.join(self.root_dir, 'reuters_test')
         for fname in os.listdir(base_path):
             path = os.path.join(base_path, fname)
             with open(path, encoding='utf-8', errors='ignore') as f:

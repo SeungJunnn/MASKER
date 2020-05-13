@@ -14,22 +14,27 @@ class MaskedDataset(object):
         self.keyword_type = keyword.keyword_type  # keyword type
         self.keyword_num = len(self.keyword)  # number of keywords
 
+        self.tokenizer = base_dataset.tokenizer
+        self.n_classes = base_dataset.n_classes
+
         if not self._check_exists():
             self._preprocess()
 
         self.train_dataset = torch.load(self._train_path)  # masked dataset
         self.test_dataset = base_dataset.test_dataset
-        self.tokenizer = base_dataset.tokenizer
-        self.n_classes = base_dataset.n_classes
 
     @property
     def _train_path(self):
-        key_type = self.keyword_type
-        key_num = len(self.keyword)
-
         train_path = self.base_dataset._train_path
-        train_path = train_path.replace('train', 'train_{}_{}'.format(key_type, key_num))
 
+        if self.keyword_type == 'random':
+            keyword_per_class = self.keyword_num
+        else:
+            keyword_per_class = self.keyword_num // self.n_classes
+
+        suffix = '{}_{}'.format(self.keyword_type, keyword_per_class)
+
+        train_path = train_path.replace('.pth', '_{}.pth'.format(suffix))
         return train_path
 
     def _check_exists(self):
