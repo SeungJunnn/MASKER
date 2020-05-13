@@ -75,7 +75,7 @@ def main():
     print('Loading pre-trained backbone networks...')
     backbone, tokenizer = load_backbone(args.backbone)
 
-    print('Initializing model and dataset..')
+    print('Initializing dataset and model..')
     if args.model_type == 'base':
         dataset = get_base_dataset(args.dataset, tokenizer,
                                    args.max_len, args.sub_ratio, args.seed)

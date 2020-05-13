@@ -24,13 +24,13 @@ def tokenize(tokenizer, raw_text, max_len=512):
     return tokens
 
 
-def create_tensor_dataset(tokens, labels):
-    assert len(tokens) == len(labels)
+def create_tensor_dataset(inputs, labels):
+    assert len(inputs) == len(labels)
 
-    tokens = torch.stack(tokens)  # (N, T)
+    inputs = torch.stack(inputs)  # (N, T)
     labels = torch.stack(labels).unsqueeze(1)  # (N, 1)
 
-    dataset = TensorDataset(tokens, labels)
+    dataset = TensorDataset(inputs, labels)
 
     return dataset
 
@@ -97,6 +97,10 @@ class BaseDataset(metaclass=ABCMeta):
     def _preprocess(self):
         pass
 
+    @abstractmethod
+    def _load_dataset(self, *args, **kwargs):
+        pass
+
 
 class NewsDataset(BaseDataset):
     def __init__(self, tokenizer, max_len=512, sub_ratio=1.0, seed=0):
@@ -104,17 +108,20 @@ class NewsDataset(BaseDataset):
 
     def _preprocess(self):
         print('Pre-processing news dataset...')
-        self._preprocess_sub('train')
-        self._preprocess_sub('test')
+        train_dataset = self._load_dataset('train')
+        test_dataset = self._load_dataset('test')
 
-    def _preprocess_sub(self, mode='train'):
+        torch.save(train_dataset, self._train_path)
+        torch.save(test_dataset, self._test_path)
+
+    def _load_dataset(self, mode='train', raw_text=False):
         assert mode in ['train', 'test']
 
         source_path = os.path.join(self.root_dir, '{}.csv'.format(mode))
         with open(source_path, encoding='utf-8') as f:
             lines = f.readlines()
 
-        tokens = []
+        inputs = []
         labels = []
 
         for line in lines:
@@ -127,20 +134,21 @@ class NewsDataset(BaseDataset):
             with open(path, encoding='utf-8', errors='ignore') as f:
                 text = f.read()
 
-            token = tokenize(self.tokenizer, text, max_len=self.max_len)
+            if not raw_text:
+                text = tokenize(self.tokenizer, text, max_len=self.max_len)
 
             label = self.class_idx.index(int(toks[1]))  # convert to subclass index
             label = torch.tensor(label).long()
 
-            tokens.append(token)
+            inputs.append(text)
             labels.append(label)
 
-        dataset = create_tensor_dataset(tokens, labels)
-
-        if mode == 'train':
-            torch.save(dataset, self._train_path)
+        if raw_text:
+            dataset = zip(inputs, labels)
         else:
-            torch.save(dataset, self._test_path)
+            dataset = create_tensor_dataset(inputs, labels)
+
+        return dataset
 
 
 class ReviewDataset(BaseDataset):
@@ -167,30 +175,36 @@ class ReviewDataset(BaseDataset):
             train_inds += (cls * per_class + shuffled[:num]).tolist()
             test_inds += (cls * per_class + shuffled[num:]).tolist()
 
-        self._preprocess_sub(docs, train_inds, 'train')
-        self._preprocess_sub(docs, test_inds, 'test')
+        train_dataset = self._load_dataset(docs, train_inds, 'train')
+        test_dataset = self._load_dataset(docs, test_inds, 'test')
 
-    def _preprocess_sub(self, docs, indices, mode='train'):
+        torch.save(train_dataset, self._train_path)
+        torch.save(test_dataset, self._test_path)
+
+    def _load_dataset(self, docs, indices, mode='train', raw_text=False):
         assert mode in ['train', 'test']
 
-        tokens = []
+        inputs = []
         labels = []
 
         for i in indices:
-            token = tokenize(self.tokenizer, docs['X'][i], max_len=self.max_len)
+            if raw_text:
+                text = docs['X'][i]
+            else:
+                text = tokenize(self.tokenizer, docs['X'][i], max_len=self.max_len)
 
             label = self.class_idx.index(int(docs['y'][i]))  # convert to subclass index
             label = torch.tensor(label).long()
 
-            tokens.append(token)
+            inputs.append(text)
             labels.append(label)
 
-        dataset = create_tensor_dataset(tokens, labels)
-
-        if mode == 'train':
-            torch.save(dataset, self._train_path)
+        if raw_text:
+            dataset = zip(inputs, labels)
         else:
-            torch.save(dataset, self._test_path)
+            dataset = create_tensor_dataset(inputs, labels)
+
+        return dataset
 
 
 class IMDBDataset(BaseDataset):
@@ -200,13 +214,20 @@ class IMDBDataset(BaseDataset):
 
     def _preprocess(self):
         print('Pre-processing imdb dataset...')
+        train_dataset, test_dataset = self._load_dataset('both')
+        torch.save(train_dataset, self._train_path)
+        torch.save(test_dataset, self._test_path)
+
+    def _load_dataset(self, mode='both', raw_text=False):
+        assert mode in ['both']
+
         source_path = os.path.join(self.root_dir, 'imdb.txt')
         with open(source_path, encoding='utf-8') as f:
             lines = f.readlines()
 
-        train_tokens = []
+        train_inputs = []
         train_labels = []
-        test_tokens = []
+        test_inputs = []
         test_labels = []
 
         for line in lines:
@@ -216,7 +237,10 @@ class IMDBDataset(BaseDataset):
                 text = '\t'.join(toks[2:-2])
                 toks = toks[:2] + [text] + toks[-2:]
 
-            token = tokenize(self.tokenizer, toks[2], max_len=self.max_len)
+            if raw_text:
+                text = toks[2]
+            else:
+                text = tokenize(self.tokenizer, toks[2], max_len=self.max_len)
 
             if toks[3] == 'unsup':
                 continue
@@ -225,17 +249,20 @@ class IMDBDataset(BaseDataset):
                 label = torch.tensor(label).long()
 
             if toks[1] == 'train':
-                train_tokens.append(token)
+                train_inputs.append(text)
                 train_labels.append(label)
             else:
-                test_tokens.append(token)
+                test_inputs.append(text)
                 test_labels.append(label)
 
-        train_dataset = create_tensor_dataset(train_tokens, train_labels)
-        test_dataset = create_tensor_dataset(test_tokens, test_labels)
+        if raw_text:
+            train_dataset = zip(train_inputs, train_labels)
+            test_dataset = zip(test_inputs, test_labels)
+        else:
+            train_dataset = create_tensor_dataset(train_inputs, train_labels)
+            test_dataset = create_tensor_dataset(test_inputs, test_labels)
 
-        torch.save(train_dataset, self._train_path)
-        torch.save(test_dataset, self._test_path)
+        return train_dataset, test_dataset
 
 
 class SST2Dataset(BaseDataset):
@@ -244,34 +271,41 @@ class SST2Dataset(BaseDataset):
 
     def _preprocess(self):
         print('Pre-processing sst2 dataset...')
-        self._preprocess_sub('train')
-        self._preprocess_sub('dev')
+        train_dataset = self._load_dataset('train')
+        test_dataset = self._load_dataset('test')
 
-    def _preprocess_sub(self, mode='train'):
+        torch.save(train_dataset, self._train_path)
+        torch.save(test_dataset, self._test_path)
+
+    def _load_dataset(self, mode='train', raw_text=False):
         assert mode in ['train', 'dev']
 
         source_path = os.path.join(self.root_dir, 'sst2_{}.tsv'.format(mode))
         with open(source_path, encoding='utf-8') as f:
             lines = f.readlines()
 
-        tokens = []
+        inputs = []
         labels = []
 
         for line in lines:
             toks = line.split('\t')
 
-            token = tokenize(self.tokenizer, toks[0], max_len=self.max_len)
+            if raw_text:
+                text = toks[0]
+            else:
+                text = tokenize(self.tokenizer, toks[0], max_len=self.max_len)
+
             label = torch.tensor(int(toks[1])).long()
 
-            tokens.append(token)
+            inputs.append(text)
             labels.append(label)
 
-        dataset = create_tensor_dataset(tokens, labels)
-
-        if mode == 'train':
-            torch.save(dataset, self._train_path)
+        if raw_text:
+            dataset = zip(inputs, labels)
         else:
-            torch.save(dataset, self._test_path)
+            dataset = create_tensor_dataset(inputs, labels)
+
+        return dataset
 
 
 class FoodDataset(BaseDataset):
@@ -280,17 +314,20 @@ class FoodDataset(BaseDataset):
 
     def _preprocess(self):
         print('Pre-processing food dataset...')
-        self._preprocess_sub('train')
-        self._preprocess_sub('test')
+        train_dataset = self._load_dataset('train')
+        test_dataset = self._load_dataset('test')
 
-    def _preprocess_sub(self, mode='train'):
+        torch.save(train_dataset, self._train_path)
+        torch.save(test_dataset, self._test_path)
+
+    def _load_dataset(self, mode='train', raw_text=False):
         assert mode in ['train', 'test']
 
         source_path = os.path.join(self.root_dir, 'foods_{}.txt'.format(mode))
         with open(source_path, encoding='utf-8') as f:
             lines = f.readlines()
 
-        tokens = []
+        inputs = []
         labels = []
 
         for line in lines:
@@ -303,18 +340,22 @@ class FoodDataset(BaseDataset):
             else:
                 continue
 
-            token = tokenize(self.tokenizer, toks[0], max_len=self.max_len)
+            if raw_text:
+                text = toks[0]
+            else:
+                text = tokenize(self.tokenizer, toks[0], max_len=self.max_len)
+
             label = torch.tensor(label).long()
 
-            tokens.append(token)
+            inputs.append(text)
             labels.append(label)
 
-        dataset = create_tensor_dataset(tokens, labels)
-
-        if mode == 'train':
-            torch.save(dataset, self._train_path)
+        if raw_text:
+            dataset = zip(inputs, labels)
         else:
-            torch.save(dataset, self._test_path)
+            dataset = create_tensor_dataset(inputs, labels)
+
+        return dataset
 
 
 class ReutersDataset(BaseDataset):
@@ -323,8 +364,13 @@ class ReutersDataset(BaseDataset):
 
     def _preprocess(self):
         print('Pre-processing reuters dataset...')
+        test_dataset = self._load_dataset('test')
+        torch.save(test_dataset, self._test_path)
 
-        tokens = []
+    def _load_dataset(self, mode='test', raw_text=False):
+        assert mode in ['test']
+
+        inputs = []
         labels = []
 
         base_path = os.path.join(self.root_dir, 'reuters_test')
@@ -333,13 +379,20 @@ class ReutersDataset(BaseDataset):
             with open(path, encoding='utf-8', errors='ignore') as f:
                 text = f.read()
 
-            token = tokenize(self.tokenizer, text, max_len=self.max_len)
+            if not raw_text:
+                text = tokenize(self.tokenizer, text, max_len=self.max_len)
+
             label = torch.tensor(-1).long()  # OOD class: -1
 
-            tokens.append(token)
+            inputs.append(text)
             labels.append(label)
 
-        dataset = create_tensor_dataset(tokens, labels)
+        if raw_text:
+            dataset = zip(inputs, labels)
+        else:
+            dataset = create_tensor_dataset(inputs, labels)
 
-        torch.save(dataset, self._test_path)
+        return dataset
+
+
 

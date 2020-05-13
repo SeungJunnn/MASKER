@@ -1,4 +1,5 @@
 import os
+import numpy as np
 
 import torch
 import torch.nn as nn
@@ -15,6 +16,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def get_base_dataset(data_name, tokenizer,
                      max_len=512, sub_ratio=1.0, seed=0):
+
+    print('Initialize base dataset..')
 
     if data_name == 'news':
         dataset = NewsDataset(tokenizer, max_len, sub_ratio, seed)
@@ -38,6 +41,11 @@ def get_masked_dataset(args, data_name, tokenizer, keyword_type, keyword_per_cla
                        max_len=512, sub_ratio=1.0, seed=0):
 
     dataset = get_base_dataset(data_name, tokenizer, max_len, sub_ratio, seed)  # base dataset
+
+    print('Initialize masked dataset..')
+
+    if keyword_type == 'random':
+        keyword_per_class = len(tokenizer)  # full words
 
     keyword_path = '{}_{}.pth'.format(keyword_type, keyword_per_class)
     keyword_path = os.path.join(dataset.root_dir, keyword_path)
@@ -96,12 +104,49 @@ def get_keyword(args, dataset, tokenizer, keyword_type, keyword_per_class):
 
 
 def get_tfidf_keyword(dataset, keyword_per_class=10):
-    raise NotImplementedError
+    from sklearn.feature_extraction.text import TfidfVectorizer
+
+    SPECIAL_TOKENS = dataset.tokenizer.all_special_ids
+
+    class_docs = [''] * dataset.n_classes  # concat all texts for each class
+
+    raw_texts = dataset._load_dataset('train', raw_text=True)
+    for (text, label) in raw_texts:
+        class_docs[label] += text
+
+    tfidf = TfidfVectorizer(ngram_range=(1, 1))
+    feat = tfidf.fit_transform(class_docs).todense()  # (n_classes, vocabs)
+    feat = np.squeeze(np.asarray(feat))  # matrix -> array
+
+    keyword = []
+    for cls in range(dataset.n_classes):
+        sorted_idx = feat[cls].argsort()[::-1]
+
+        count = 0
+        for idx in sorted_idx:
+            if count == keyword_per_class:
+                break
+
+            word = tfidf.get_feature_names()[idx]
+            token = dataset.tokenizer.encode(word)[1:-1]  # ignore CLS and SEP
+
+            if token in SPECIAL_TOKENS:  # special token
+                continue
+            elif len(token) > 1:  # multiple words
+                continue
+
+            if token not in keyword:
+                 keyword.append(token)
+                 count += 1
+
+    assert len(keyword) == keyword_per_class * dataset.n_classes
+
+    return keyword
 
 
 def get_attention_keyword(dataset, attn_model, keyword_per_class=10):
     loader = DataLoader(dataset.train_dataset, shuffle=False,
-                        batch_size=32, num_workers=4)
+                        batch_size=16, num_workers=4)
 
     SPECIAL_TOKENS = dataset.tokenizer.all_special_ids
 
