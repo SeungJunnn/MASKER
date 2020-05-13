@@ -8,7 +8,7 @@ def get_base_dataset(data_name, tokenizer,
     if data_name == 'news':
         dataset = NewsDataset(tokenizer, max_len, sub_ratio, seed)
     elif data_name == 'review':
-        dataset = ReviewDataset(tokenizer, max_len, sub_ratio, seed, split_ratio=0.7)
+        dataset = ReviewDataset(tokenizer, max_len, sub_ratio, seed)
     elif data_name == 'imdb':
         dataset = IMDBDataset(tokenizer, max_len)
     elif data_name == 'sst2':

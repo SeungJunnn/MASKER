@@ -25,6 +25,17 @@ def tokenize(tokenizer, raw_text, max_len=512):
     return tokens
 
 
+def create_tensor_dataset(tokens, labels):
+    assert len(tokens) == len(labels)
+
+    tokens = torch.stack(tokens)  # (N, T)
+    labels = torch.stack(labels).unsqueeze(1)  # (N, 1)
+
+    dataset = TensorDataset(tokens, labels)
+
+    return dataset
+
+
 class BaseDataset(metaclass=ABCMeta):
     def __init__(self, total_class, tokenizer, max_len=512, sub_ratio=1.0, seed=0):
         self.tokenizer = tokenizer
@@ -64,7 +75,7 @@ class BaseDataset(metaclass=ABCMeta):
     def _check_exists(self):
         if (self._train_path is not None) and (not os.path.exists(self._train_path)):
             return False
-        elif (not os.path.exists(self._test_path)):
+        elif not os.path.exists(self._test_path):
             return False
         else:
             return True
@@ -124,12 +135,7 @@ class NewsDataset(BaseDataset):
             tokens.append(token)
             labels.append(label)
 
-        assert len(tokens) == len(labels)
-
-        tokens = torch.stack(tokens)
-        labels = torch.stack(labels).unsqueeze(1)
-
-        dataset = TensorDataset(tokens, labels)
+        dataset = create_tensor_dataset(tokens, labels)
 
         if mode == 'train':
             torch.save(dataset, self._train_path)
@@ -138,9 +144,9 @@ class NewsDataset(BaseDataset):
 
 
 class ReviewDataset(BaseDataset):
-    def __init__(self, tokenizer, max_len=512, sub_ratio=1.0, seed=0, split_ratio=0.7):
+    def __init__(self, tokenizer, max_len=512, sub_ratio=1.0, seed=0):
         total_class = 50
-        self.split_ratio = split_ratio  # split ratio for train/test dataset
+        self.split_ratio = 0.7  # split ratio for train/test dataset
         super(ReviewDataset, self).__init__(total_class, tokenizer, max_len, sub_ratio, seed)
 
     @property
@@ -192,12 +198,7 @@ class ReviewDataset(BaseDataset):
             tokens.append(token)
             labels.append(label)
 
-        assert len(tokens) == len(labels)
-
-        tokens = torch.stack(tokens)
-        labels = torch.stack(labels).unsqueeze(1)
-
-        dataset = TensorDataset(tokens, labels)
+        dataset = create_tensor_dataset(tokens, labels)
 
         if mode == 'train':
             torch.save(dataset, self._train_path)
@@ -248,16 +249,8 @@ class IMDBDataset(BaseDataset):
                 test_tokens.append(token)
                 test_labels.append(label)
 
-        assert len(train_tokens) == len(train_labels)
-        assert len(test_tokens) == len(test_labels)
-
-        train_tokens = torch.stack(train_tokens)
-        train_labels = torch.stack(train_labels).unsqueeze(1)
-        test_tokens = torch.stack(test_tokens)
-        test_labels = torch.stack(test_labels).unsqueeze(1)
-
-        train_dataset = TensorDataset(train_tokens, train_labels)
-        test_dataset = TensorDataset(test_tokens, test_labels)
+        train_dataset = create_tensor_dataset(train_tokens, train_labels)
+        test_dataset = create_tensor_dataset(test_tokens, test_labels)
 
         torch.save(train_dataset, self._train_path)
         torch.save(test_dataset, self._test_path)
@@ -300,12 +293,7 @@ class SST2Dataset(BaseDataset):
             tokens.append(token)
             labels.append(label)
 
-        assert len(tokens) == len(labels)
-
-        tokens = torch.stack(tokens)
-        labels = torch.stack(labels).unsqueeze(1)
-
-        dataset = TensorDataset(tokens, labels)
+        dataset = create_tensor_dataset(tokens, labels)
 
         if mode == 'train':
             torch.save(dataset, self._train_path)
@@ -357,12 +345,7 @@ class FoodDataset(BaseDataset):
             tokens.append(token)
             labels.append(label)
 
-        assert len(tokens) == len(labels)
-
-        tokens = torch.stack(tokens)
-        labels = torch.stack(labels).unsqueeze(1)
-
-        dataset = TensorDataset(tokens, labels)
+        dataset = create_tensor_dataset(tokens, labels)
 
         if mode == 'train':
             torch.save(dataset, self._train_path)
@@ -401,12 +384,7 @@ class ReutersDataset(BaseDataset):
             tokens.append(token)
             labels.append(label)
 
-        assert len(tokens) == len(labels)
-
-        tokens = torch.stack(tokens)
-        labels = torch.stack(labels).unsqueeze(1)
-
-        dataset = TensorDataset(tokens, labels)
+        dataset = create_tensor_dataset(tokens, labels)
 
         torch.save(dataset, self._test_path)
 
