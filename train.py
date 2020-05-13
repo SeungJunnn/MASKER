@@ -66,9 +66,11 @@ def main():
         else:
             args.batch_size = 16
     else:
-        args.batch_size = 32
+        args.batch_size = 1
+        # args.batch_size = 32
 
     ### load backbone and tokenizer ###
+    print('Loading pre-trained backbone networks...')
     if args.backbone == 'bert':
         from transformers import BertModel, BertTokenizer
         backbone = BertModel.from_pretrained('bert-base-uncased')
@@ -82,7 +84,8 @@ def main():
     else:
         raise ValueError('No matching backbone network')
 
-    ### create model and dataset ###
+    ### initialize model and dataset ###
+    print('Initializing model and dataset..')
     if args.model_type == 'base':
         dataset = get_base_dataset(args.dataset, tokenizer,
                                    args.max_len, args.sub_ratio, args.seed)
@@ -98,6 +101,7 @@ def main():
     optimizer = optim.AdamW(model.parameters(), lr=2e-5, eps=1e-8)
 
     ### train model ###
+    print('Training model..')
     if args.model_type == 'base':
         train_base(args, dataset, model, optimizer)
     else:

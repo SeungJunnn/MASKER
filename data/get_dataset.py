@@ -8,17 +8,15 @@ def get_base_dataset(data_name, tokenizer,
     if data_name == 'news':
         dataset = NewsDataset(tokenizer, max_len, sub_ratio, seed)
     elif data_name == 'review':
-        raise NotImplementedError
+        dataset = ReviewDataset(tokenizer, max_len, sub_ratio, seed, split_ratio=0.7)
     elif data_name == 'imdb':
         dataset = IMDBDataset(tokenizer, max_len)
-    elif data_name == 'amazon':
-        raise NotImplementedError
-    elif data_name == 'food':
-        raise NotImplementedError
     elif data_name == 'sst2':
-        raise NotImplementedError
+        dataset = SST2Dataset(tokenizer, max_len)
+    elif data_name == 'food':
+        dataset = FoodDataset(tokenizer, max_len)
     elif data_name == 'reuters':
-        raise NotImplementedError
+        dataset = ReutersDataset(tokenizer, max_len)
     else:
         raise ValueError('No matching dataset')
 
