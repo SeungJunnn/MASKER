@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from training.common import AverageMeter, one_hot
 
@@ -7,7 +8,11 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def train_base(args, loader, model, optimizer, epoch=0):
     model.train()
-    dataset = loader.dataset
+
+    if isinstance(model, nn.DataParallel):
+        n_classes = model.module.n_classes
+    else:
+        n_classes = model.n_classes
 
     losses = dict()
     losses['cls'] = AverageMeter()
@@ -25,7 +30,7 @@ def train_base(args, loader, model, optimizer, epoch=0):
         if args.classifier_type == 'softmax':
             loss_cls = F.cross_entropy(out_cls, labels)
         else:
-            labels = one_hot(labels, n_classes=dataset.n_classes)
+            labels = one_hot(labels, n_classes=n_classes)
             loss_cls = F.binary_cross_entropy_with_logits(out_cls, labels)
 
         # total loss

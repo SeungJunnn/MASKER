@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from training.common import AverageMeter, one_hot, uniform_labels
 
@@ -7,7 +8,11 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def train_masker(args, loader, model, optimizer, epoch=0):
     model.train()
-    dataset = loader.dataset
+
+    if isinstance(model, nn.DataParallel):
+        n_classes = model.module.n_classes
+    else:
+        n_classes = model.n_classes
 
     losses = dict()
     losses['cls'] = AverageMeter()
@@ -28,7 +33,7 @@ def train_masker(args, loader, model, optimizer, epoch=0):
         if args.classifier_type == 'softmax':
             loss_cls = F.cross_entropy(out_cls, labels_cls)
         else:
-            labels_cls = one_hot(labels_cls, n_classes=dataset.n_classes)
+            labels_cls = one_hot(labels_cls, n_classes=n_classes)
             loss_cls = F.binary_cross_entropy_with_logits(out_cls, labels_cls)
 
         # self-supervision loss
@@ -38,7 +43,7 @@ def train_masker(args, loader, model, optimizer, epoch=0):
 
         # outlier regularization loss
         out_ood = F.log_softmax(out_ood, dim=1)  # log-probs
-        unif = uniform_labels(labels, n_classes=dataset.n_classes)
+        unif = uniform_labels(labels, n_classes=n_classes)
         loss_ent = F.kl_div(out_ood, unif)
         loss_ent = loss_ent * args.lambda_ent
 
