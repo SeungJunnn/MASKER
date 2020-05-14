@@ -9,7 +9,9 @@ import numpy as np
 from common import DATA_PATH
 
 
-def tokenize(tokenizer, raw_text, max_len=512):
+def tokenize(tokenizer, raw_text):
+    max_len = tokenizer.max_len
+
     if len(raw_text) > max_len:
         raw_text = raw_text[:max_len]
 
@@ -37,20 +39,26 @@ def create_tensor_dataset(inputs, labels):
 
 class BaseDataset(metaclass=ABCMeta):
     def __init__(self, data_name, total_class, tokenizer,
-                 max_len=512, sub_ratio=1.0, seed=0, test_only=False):
+                 split_ratio=1.0, seed=0, remain=False, test_only=False):
 
         self.data_name = data_name
         self.total_class = total_class
         self.root_dir = os.path.join(DATA_PATH, data_name)
 
         self.tokenizer = tokenizer
-        self.max_len = max_len
-        self.sub_ratio = sub_ratio
+        self.split_ratio = split_ratio
         self.seed = seed
+        self.remain = remain
         self.test_only = test_only
 
-        self.n_classes = int(self.total_class * self.sub_ratio)
-        self.class_idx = self._get_subclass()
+        self.n_classes = int(self.total_class * self.split_ratio)
+        if self.remain is True:
+            self.n_classes = self.total_class - self.n_classes
+
+        if self.split_ratio < 1.0:
+            self.class_idx = self._get_subclass()
+        else:
+            self.class_idx = list(range(self.n_classes))
 
         if not self._check_exists():
             self._preprocess()
@@ -64,16 +72,25 @@ class BaseDataset(metaclass=ABCMeta):
 
     def _get_subclass(self):
         np.random.seed(self.seed)  # fix random seed
-        class_idx = np.random.permutation(self.total_class)[:self.n_classes]
+        class_idx = np.random.permutation(self.total_class)
+
+        if self.remain is False:
+            class_idx = class_idx[:self.n_classes]  # first selected classes
+        else:
+            class_idx = class_idx[-self.n_classes:]  # last remaining classes
+
         return np.sort(class_idx).tolist()
 
     @property
     def base_path(self):
-        if self.sub_ratio < 1.0:
+        if self.split_ratio < 1.0:
             base_path = '{}_{}_sub_{:.2f}_seed_{:d}'.format(
-                self.data_name, self.tokenizer.name, self.sub_ratio, self.seed)
+                self.data_name, self.tokenizer.name, self.split_ratio, self.seed)
+            if self.remain:
+                base_path += '_remain'
         else:
             base_path = '{}_{}'.format(self.data_name, self.tokenizer.name)
+
         return base_path
 
     @property
@@ -102,8 +119,10 @@ class BaseDataset(metaclass=ABCMeta):
 
 
 class NewsDataset(BaseDataset):
-    def __init__(self, tokenizer, max_len=512, sub_ratio=1.0, seed=0):
-        super(NewsDataset, self).__init__('news', 20, tokenizer, max_len, sub_ratio, seed)
+    def __init__(self, tokenizer, split_ratio=1.0, seed=0,
+                 test_only=False, remain=False):
+        super(NewsDataset, self).__init__('news', 20, tokenizer, split_ratio, seed,
+                                          test_only=test_only, remain=remain)
 
     def _preprocess(self):
         print('Pre-processing news dataset...')
@@ -134,7 +153,7 @@ class NewsDataset(BaseDataset):
                 text = f.read()
 
             if not raw_text:
-                text = tokenize(self.tokenizer, text, max_len=self.max_len)
+                text = tokenize(self.tokenizer, text)
 
             label = self.class_idx.index(int(toks[1]))  # convert to subclass index
             label = torch.tensor(label).long()
@@ -151,9 +170,11 @@ class NewsDataset(BaseDataset):
 
 
 class ReviewDataset(BaseDataset):
-    def __init__(self, tokenizer, max_len=512, sub_ratio=1.0, seed=0):
-        self.split_ratio = 0.7  # split ratio for train/test dataset
-        super(ReviewDataset, self).__init__('review', 50, tokenizer, max_len, sub_ratio, seed)
+    def __init__(self, tokenizer, split_ratio=1.0, seed=0,
+                 test_only=False, remain=False):
+        self.train_test_ratio = 0.7  # split ratio for train/test dataset
+        super(ReviewDataset, self).__init__('review', 50, tokenizer, split_ratio, seed,
+                                            test_only=test_only, remain=remain)
 
     def _preprocess(self):
         print('Pre-processing review dataset...')
@@ -169,7 +190,7 @@ class ReviewDataset(BaseDataset):
         per_class = 1000  # samples are ordered by class
         for cls in self.class_idx:  # only selected classes
             shuffled = np.random.permutation(per_class)
-            num = int(self.split_ratio * per_class)
+            num = int(self.train_test_ratio * per_class)
 
             train_inds += (cls * per_class + shuffled[:num]).tolist()
             test_inds += (cls * per_class + shuffled[num:]).tolist()
@@ -190,7 +211,7 @@ class ReviewDataset(BaseDataset):
             if raw_text:
                 text = docs['X'][i]
             else:
-                text = tokenize(self.tokenizer, docs['X'][i], max_len=self.max_len)
+                text = tokenize(self.tokenizer, docs['X'][i])
 
             label = self.class_idx.index(int(docs['y'][i]))  # convert to subclass index
             label = torch.tensor(label).long()
@@ -207,9 +228,9 @@ class ReviewDataset(BaseDataset):
 
 
 class IMDBDataset(BaseDataset):
-    def __init__(self, tokenizer, max_len=512):
+    def __init__(self, tokenizer, test_only=False):
         self.class_dict = {'pos': 1, 'neg': 0}
-        super(IMDBDataset, self).__init__('imdb', 2, tokenizer, max_len)
+        super(IMDBDataset, self).__init__('imdb', 2, tokenizer, test_only=test_only)
 
     def _preprocess(self):
         print('Pre-processing imdb dataset...')
@@ -239,7 +260,7 @@ class IMDBDataset(BaseDataset):
             if raw_text:
                 text = toks[2]
             else:
-                text = tokenize(self.tokenizer, toks[2], max_len=self.max_len)
+                text = tokenize(self.tokenizer, toks[2])
 
             if toks[3] == 'unsup':
                 continue
@@ -265,13 +286,13 @@ class IMDBDataset(BaseDataset):
 
 
 class SST2Dataset(BaseDataset):
-    def __init__(self, tokenizer, max_len=512):
-        super(SST2Dataset, self).__init__('sst2', 2, tokenizer, max_len)
+    def __init__(self, tokenizer, test_only=False):
+        super(SST2Dataset, self).__init__('sst2', 2, tokenizer, test_only=test_only)
 
     def _preprocess(self):
         print('Pre-processing sst2 dataset...')
         train_dataset = self._load_dataset('train')
-        test_dataset = self._load_dataset('test')
+        test_dataset = self._load_dataset('dev')
 
         torch.save(train_dataset, self._train_path)
         torch.save(test_dataset, self._test_path)
@@ -292,7 +313,7 @@ class SST2Dataset(BaseDataset):
             if raw_text:
                 text = toks[0]
             else:
-                text = tokenize(self.tokenizer, toks[0], max_len=self.max_len)
+                text = tokenize(self.tokenizer, toks[0])
 
             label = torch.tensor(int(toks[1])).long()
 
@@ -308,8 +329,8 @@ class SST2Dataset(BaseDataset):
 
 
 class FoodDataset(BaseDataset):
-    def __init__(self, tokenizer, max_len=512):
-        super(FoodDataset, self).__init__('food', 2, tokenizer, max_len)
+    def __init__(self, tokenizer, test_only=False):
+        super(FoodDataset, self).__init__('food', 2, tokenizer, test_only=test_only)
 
     def _preprocess(self):
         print('Pre-processing food dataset...')
@@ -342,7 +363,7 @@ class FoodDataset(BaseDataset):
             if raw_text:
                 text = toks[0]
             else:
-                text = tokenize(self.tokenizer, toks[0], max_len=self.max_len)
+                text = tokenize(self.tokenizer, toks[0])
 
             label = torch.tensor(label).long()
 
@@ -358,8 +379,9 @@ class FoodDataset(BaseDataset):
 
 
 class ReutersDataset(BaseDataset):
-    def __init__(self, tokenizer, max_len=512):
-        super(ReutersDataset, self).__init__('reuters', 2, tokenizer, max_len, test_only=True)
+    def __init__(self, tokenizer, test_only=True):
+        assert test_only is True  # no train dataset
+        super(ReutersDataset, self).__init__('reuters', 2, tokenizer, test_only=test_only)
 
     def _preprocess(self):
         print('Pre-processing reuters dataset...')
@@ -379,7 +401,7 @@ class ReutersDataset(BaseDataset):
                 text = f.read()
 
             if not raw_text:
-                text = tokenize(self.tokenizer, text, max_len=self.max_len)
+                text = tokenize(self.tokenizer, text)
 
             label = torch.tensor(-1).long()  # OOD class: -1
 

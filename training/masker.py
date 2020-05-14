@@ -12,7 +12,7 @@ def train_masker(args, loader, model, optimizer, epoch=0):
     losses = dict()
     losses['cls'] = AverageMeter()
     losses['ssl'] = AverageMeter()
-    losses['ood'] = AverageMeter()
+    losses['ent'] = AverageMeter()
 
     for i, (tokens, labels) in enumerate(loader):
         batch_size = tokens.size(0)
@@ -39,11 +39,11 @@ def train_masker(args, loader, model, optimizer, epoch=0):
         # outlier regularization loss
         out_ood = F.log_softmax(out_ood, dim=1)  # log-probs
         unif = uniform_labels(labels, n_classes=dataset.n_classes)
-        loss_ood = F.kl_div(out_ood, unif)
-        loss_ood = loss_ood * args.lambda_ood
+        loss_ent = F.kl_div(out_ood, unif)
+        loss_ent = loss_ent * args.lambda_ent
 
         # total loss
-        loss = loss_cls + loss_ssl + loss_ood
+        loss = loss_cls + loss_ssl + loss_ent
 
         optimizer.zero_grad()
         loss.backward()
@@ -51,8 +51,8 @@ def train_masker(args, loader, model, optimizer, epoch=0):
 
         losses['cls'].update(loss_cls.item(), batch_size)
         losses['ssl'].update(loss_ssl.item(), batch_size)
-        losses['ood'].update(loss_ood.item(), batch_size)
+        losses['ent'].update(loss_ent.item(), batch_size)
 
-    print('[Epoch %2d] [LossC %f] [LossS %f] [LossO %f]' %
-          (epoch, losses['cls'].average, losses['ssl'].average, losses['ood'].average))
+    print('[Epoch %2d] [LossC %f] [LossS %f] [LossE %f]' %
+          (epoch, losses['cls'].average, losses['ssl'].average, losses['ent'].average))
 

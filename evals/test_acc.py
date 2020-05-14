@@ -5,7 +5,8 @@ from training.common import AverageMeter
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def test_error(loader, model):
+def test_acc(loader, model):
+    print('Compute test accuracy...')
     model.eval()
 
     error_top1 = AverageMeter()
@@ -15,15 +16,17 @@ def test_error(loader, model):
         tokens = tokens.to(device)
         labels = labels.to(device)
 
-        outputs = model(tokens)  # (B, C)
+        with torch.no_grad():
+            outputs = model(tokens)  # (B, C)
 
-        top1, = error_k(outputs.data, labels, ks=(1,))
+        top1, = acc_k(outputs.data, labels, ks=(1,))
+
         error_top1.update(top1.item(), batch_size)
 
     return error_top1.average
 
 
-def error_k(output, target, ks=(1,)):
+def acc_k(output, target, ks=(1,)):
     """Computes the precision@k for the specified values of k"""
     max_k = max(ks)
     batch_size = target.size(0)
@@ -35,5 +38,5 @@ def error_k(output, target, ks=(1,)):
     results = []
     for k in ks:
         correct_k = correct[:k].view(-1).float().sum(0)
-        results.append(100.0 - correct_k.mul_(100.0 / batch_size))
+        results.append(correct_k.mul_(100.0 / batch_size))
     return results

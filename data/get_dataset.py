@@ -14,40 +14,38 @@ from common import CKPT_PATH
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def get_base_dataset(data_name, tokenizer,
-                     max_len=512, sub_ratio=1.0, seed=0):
+def get_base_dataset(data_name, tokenizer, split_ratio=1.0, seed=0, test_only=False, remain=False):
 
-    print('Initializing base dataset...')
+    print('Initializing base dataset... (name: {})'.format(data_name))
 
     if data_name == 'news':
-        dataset = NewsDataset(tokenizer, max_len, sub_ratio, seed)
+        dataset = NewsDataset(tokenizer, split_ratio, seed, test_only=test_only, remain=remain)
     elif data_name == 'review':
-        dataset = ReviewDataset(tokenizer, max_len, sub_ratio, seed)
+        dataset = ReviewDataset(tokenizer, split_ratio, seed, test_only=test_only, remain=remain)
     elif data_name == 'imdb':
-        dataset = IMDBDataset(tokenizer, max_len)
+        dataset = IMDBDataset(tokenizer, test_only=test_only)
     elif data_name == 'sst2':
-        dataset = SST2Dataset(tokenizer, max_len)
+        dataset = SST2Dataset(tokenizer, test_only=test_only)
     elif data_name == 'food':
-        dataset = FoodDataset(tokenizer, max_len)
+        dataset = FoodDataset(tokenizer, test_only=test_only)
     elif data_name == 'reuters':
-        dataset = ReutersDataset(tokenizer, max_len)
+        dataset = ReutersDataset(tokenizer, test_only=test_only)
     else:
         raise ValueError('No matching dataset')
 
     return dataset
 
 
-def get_masked_dataset(args, data_name, tokenizer, keyword_type, keyword_per_class,
-                       max_len=512, sub_ratio=1.0, seed=0):
+def get_masked_dataset(args, data_name, tokenizer, keyword_type, keyword_per_class, split_ratio=1.0, seed=0):
 
-    dataset = get_base_dataset(data_name, tokenizer, max_len, sub_ratio, seed)  # base dataset
+    dataset = get_base_dataset(data_name, tokenizer, split_ratio, seed)  # base dataset
 
-    print('Initializing masked dataset...')
+    print('Initializing masked dataset... (name: {})'.format(data_name))
 
     if keyword_type == 'random':
         keyword_per_class = len(tokenizer)  # full words
 
-    keyword_path = '{}_{}.pth'.format(keyword_type, keyword_per_class)
+    keyword_path = '{}_{}_{}.pth'.format(data_name, keyword_type, keyword_per_class)
     keyword_path = os.path.join(dataset.root_dir, keyword_path)
 
     if os.path.exists(keyword_path):
@@ -76,17 +74,22 @@ def get_keyword(args, dataset, tokenizer, keyword_type, keyword_per_class):
         keyword = Keyword('tfidf', keyword)
 
     elif keyword_type == 'attention':
-        if args.pretrained_backbone is None:
-            args.pretrained_backbone = args.backbone
+        if args.attn_backbone is None:
+            args.attn_backbone = args.backbone
 
-        attn_model, _ = load_backbone(args.pretrained_backbone, output_attentions=True)
+        attn_model, _ = load_backbone(args.attn_backbone, output_attentions=True)
         attn_model.to(device)  # only backbone
 
-        if args.pretrained_path is not None:
-            ckpt = torch.load(os.path.join(CKPT_PATH, args.pretrained_path))
-            attn_model.load_state_dict(ckpt, strict=False)  # assume ckpt is state_dict
-        else:
-            print('Warning! Pre-trained model is not specified. Use random network.')
+        assert args.attn_model_path is not None
+        state_dict = torch.load(os.path.join(CKPT_PATH, dataset.data_name, args.attn_model_path))
+
+        new_state_dict = dict()
+        for key, value in state_dict.items():  # only keep backbone parameters
+            if key.split('.')[0] == 'backbone':
+                key = '.'.join(key.split('.')[1:])  # remove 'backbone'
+                new_state_dict[key] = value
+
+        attn_model.load_state_dict(new_state_dict)  # backbone state dict
 
         if torch.cuda.device_count() > 1:
             attn_model = nn.DataParallel(attn_model)
