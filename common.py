@@ -1,9 +1,9 @@
 import os
 
-HOME = os.path.expanduser('~')
+# HOME = os.path.expanduser('~')
+# DATA_PATH = os.path.join(HOME, 'dataset')
 
-DATA_PATH = os.path.join(HOME, 'data_masker')
+DATA_PATH = './dataset'
+CKPT_PATH = './checkpoint'
 
-# CHECKPOINT_PATH = './checkpoint'
-SAVE_PATH = os.path.join(HOME, 'data_masker/checkpoint')
 

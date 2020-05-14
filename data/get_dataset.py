@@ -9,7 +9,7 @@ from data.base_dataset import NewsDataset, ReviewDataset, IMDBDataset, SST2Datas
 from data.masked_dataset import MaskedDataset
 from models import load_backbone
 
-from common import SAVE_PATH
+from common import CKPT_PATH
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -17,7 +17,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def get_base_dataset(data_name, tokenizer,
                      max_len=512, sub_ratio=1.0, seed=0):
 
-    print('Initialize base dataset..')
+    print('Initializing base dataset...')
 
     if data_name == 'news':
         dataset = NewsDataset(tokenizer, max_len, sub_ratio, seed)
@@ -42,7 +42,7 @@ def get_masked_dataset(args, data_name, tokenizer, keyword_type, keyword_per_cla
 
     dataset = get_base_dataset(data_name, tokenizer, max_len, sub_ratio, seed)  # base dataset
 
-    print('Initialize masked dataset..')
+    print('Initializing masked dataset...')
 
     if keyword_type == 'random':
         keyword_per_class = len(tokenizer)  # full words
@@ -83,7 +83,7 @@ def get_keyword(args, dataset, tokenizer, keyword_type, keyword_per_class):
         attn_model.to(device)  # only backbone
 
         if args.pretrained_path is not None:
-            ckpt = torch.load(os.path.join(SAVE_PATH, args.pretrained_path))
+            ckpt = torch.load(os.path.join(CKPT_PATH, args.pretrained_path))
             attn_model.load_state_dict(ckpt, strict=False)  # assume ckpt is state_dict
         else:
             print('Warning! Pre-trained model is not specified. Use random network.')
@@ -93,8 +93,6 @@ def get_keyword(args, dataset, tokenizer, keyword_type, keyword_per_class):
 
         keyword = get_attention_keyword(dataset, attn_model, keyword_per_class)
         keyword = Keyword('attention', keyword)
-
-        del attn_model  # free GPU memory
 
     else:  # random
         keyword = list(tokenizer.vocab.values())  # all words

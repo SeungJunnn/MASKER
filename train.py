@@ -1,12 +1,17 @@
+import os
 import argparse
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.utils.data import DataLoader
 
 from data import get_base_dataset, get_masked_dataset
 from models import load_backbone, BaseNet, MaskerNet
 from training import train_base, train_masker
+from eval import test_error
+
+from common import CKPT_PATH
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -70,12 +75,12 @@ def main():
         else:
             args.batch_size = 16
     else:
-        args.batch_size = 32
+        args.batch_size = 1
 
     print('Loading pre-trained backbone networks...')
     backbone, tokenizer = load_backbone(args.backbone)
 
-    print('Initializing dataset and model..')
+    print('Initializing dataset and model...')
     if args.model_type == 'base':
         dataset = get_base_dataset(args.dataset, tokenizer,
                                    args.max_len, args.sub_ratio, args.seed)
@@ -90,11 +95,23 @@ def main():
 
     optimizer = optim.AdamW(model.parameters(), lr=2e-5, eps=1e-8)
 
-    print('Training model..')
-    if args.model_type == 'base':
-        train_base(args, dataset, model, optimizer)
-    else:
-        train_masker(args, dataset, model, optimizer)
+    train_loader = DataLoader(dataset.train_dataset, shuffle=True, drop_last=True,
+                              batch_size=args.batch_size, num_workers=4)
+    test_loader = DataLoader(dataset.test_dataset, shuffle=False,
+                             batch_size=args.batch_size, num_workers=4)
+
+    print('Training model...')
+    for epoch in range(1, args.epochs + 1):
+        if args.model_type == 'base':
+            train_base(args, train_loader, model, optimizer, epoch)
+        else:
+            train_masker(args, train_loader, model, optimizer, epoch)
+
+        error = test_error(test_loader, model)
+        print('test error: {:.2f}'.format(error))
+
+    save_path = os.path.join(CKPT_PATH, dataset.base_path + '_model.pth')
+    torch.save(model.state_dict(), save_path)
 
 
 if __name__ == "__main__":

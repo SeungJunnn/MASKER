@@ -68,22 +68,21 @@ class BaseDataset(metaclass=ABCMeta):
         return np.sort(class_idx).tolist()
 
     @property
-    def _base_path(self):
+    def base_path(self):
         if self.sub_ratio < 1.0:
             base_path = '{}_{}_sub_{:.2f}_seed_{:d}'.format(
                 self.data_name, self.tokenizer.name, self.sub_ratio, self.seed)
         else:
             base_path = '{}_{}'.format(self.data_name, self.tokenizer.name)
-
-        return os.path.join(self.root_dir, base_path)
+        return base_path
 
     @property
     def _train_path(self):
-        return self._base_path + '_train.pth'
+        return os.path.join(self.root_dir, self.base_path + '_train.pth')
 
     @property
     def _test_path(self):
-        return self._base_path + '_test.pth'
+        return os.path.join(self.root_dir, self.base_path + '_test.pth')
 
     def _check_exists(self):
         if not self.test_only and not os.path.exists(self._train_path):
