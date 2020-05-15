@@ -41,7 +41,8 @@ def main():
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
 
-    optimizer = optim.AdamW(model.parameters(), lr=2e-5, eps=1e-8)
+    #optimizer = optim.AdamW(model.parameters(), lr=2e-5, eps=1e-8)
+    optimizer = optim.Adam([{'params': model.bert.parameters(), 'lr' : 5e-5} ], lr=1e-3, eps=1e-8)
 
     train_loader = DataLoader(dataset.train_dataset, shuffle=True, drop_last=True,
                               batch_size=args.batch_size, num_workers=4)
