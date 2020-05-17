@@ -41,8 +41,13 @@ def main():
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
 
-    #optimizer = optim.AdamW(model.parameters(), lr=2e-5, eps=1e-8)
-    optimizer = optim.Adam([{'params': model.bert.parameters(), 'lr' : 5e-5} ], lr=1e-3, eps=1e-8)
+    if args.optimizer == 'adam_ood':
+        optimizer = optim.Adam([
+            {'params': model.parameters()},
+            {'params': model.backbone.parameters(), 'lr': 5e-5}
+        ], lr=1e-3, eps=1e-8)
+    else:
+        optimizer = optim.Adam(model.parameters(), lr=1e-5, eps=1e-8)
 
     train_loader = DataLoader(dataset.train_dataset, shuffle=True, drop_last=True,
                               batch_size=args.batch_size, num_workers=4)
@@ -63,7 +68,7 @@ def main():
         model = model.module
 
     os.makedirs(os.path.join(CKPT_PATH, dataset.data_name), exist_ok=True)
-    save_path = os.path.join(CKPT_PATH, dataset.data_name, dataset.base_path + '_model.pth')
+    save_path = os.path.join(CKPT_PATH, dataset.data_name, dataset.base_path + '.model')
     torch.save(model.state_dict(), save_path)
 
 

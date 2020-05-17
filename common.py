@@ -34,12 +34,16 @@ def _parse_args_train(parser):
     parser.add_argument("--train_type", help='train type (base|masker)',
                         choices=['base', 'masker'],
                         default='masker', type=str)
+    parser.add_argument("--optimizer", help='optimizer type (adam_ood|adam_gen)',
+                        choices=['adam_ood', 'adam_gen'],
+                        default='adam_ood', type=int)
+    parser.add_argument("--epochs", help='training epochs',
+                        default=10, type=int)
+
     parser.add_argument("--keyword_type", help='keyword type (random|tfidf|attention|etc.)',
                         choices=['random', 'tfidf', 'attention'],
                         default='attention', type=str)
     parser.add_argument("--keyword_per_class", help='number of keywords for each class',
-                        default=10, type=int)
-    parser.add_argument("--epochs", help='training epochs',
                         default=10, type=int)
 
     parser.add_argument("--attn_backbone", help='backbone for attention network (None: args.backbone)',
@@ -49,7 +53,7 @@ def _parse_args_train(parser):
     parser.add_argument("--lambda_ssl", help='weight for keyword reconstruction loss',
                         default=0.001, type=float)
     parser.add_argument("--lambda_ent", help='weight for entropy regularization loss',
-                        default=0.0001, type=float)
+                        default=0.001, type=float)
     return parser
 
 

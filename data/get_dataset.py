@@ -45,7 +45,7 @@ def get_masked_dataset(args, data_name, tokenizer, keyword_type, keyword_per_cla
     if keyword_type == 'random':
         keyword_per_class = len(tokenizer)  # full words
 
-    keyword_path = '{}_{}_{}.pth'.format(data_name, keyword_type, keyword_per_class)
+    keyword_path = '{}_keyword_{}_{}.pth'.format(dataset.base_path, keyword_type, keyword_per_class)
     keyword_path = os.path.join(dataset.root_dir, keyword_path)
 
     if os.path.exists(keyword_path):

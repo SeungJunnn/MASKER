@@ -32,7 +32,7 @@ class MaskedDataset(object):
         else:
             keyword_per_class = self.keyword_num // self.n_classes
 
-        suffix = '{}_{}'.format(self.keyword_type, keyword_per_class)
+        suffix = 'masked_{}_{}'.format(self.keyword_type, keyword_per_class)
 
         train_path = train_path.replace('.pth', '_{}.pth'.format(suffix))
         return train_path
