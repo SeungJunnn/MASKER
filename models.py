@@ -55,7 +55,7 @@ class BaseNet(nn.Module):
             out_cls = torch.tanh(out_cls)
             out_cls = self.dropout(out_cls)
             out_cls = self.net_cls(out_cls)
-            return x
+            return out_cls
 
 
 class MaskerNet(nn.Module):
