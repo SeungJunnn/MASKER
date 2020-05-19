@@ -32,11 +32,11 @@ def main():
     print('Initializing dataset and model...')
     if args.train_type == 'base':
         dataset = get_base_dataset(args.dataset, tokenizer, args.split_ratio, args.seed)
-        model = BaseNet(backbone, dataset.n_classes).to(device)
+        model = BaseNet(args.backbone, backbone, dataset.n_classes).to(device)
     else:
         dataset = get_masked_dataset(args, args.dataset, tokenizer, args.keyword_type, args.keyword_per_class,
                                      args.split_ratio, args.seed)
-        model = MaskerNet(backbone, dataset.n_classes, dataset.keyword_num).to(device)
+        model = MaskerNet(args.backbone, backbone, dataset.n_classes, dataset.keyword_num).to(device)
 
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
