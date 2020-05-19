@@ -45,7 +45,7 @@ def get_masked_dataset(args, data_name, tokenizer, keyword_type, keyword_per_cla
     if keyword_type == 'random':
         keyword_per_class = len(tokenizer)  # full words
 
-    keyword_path = '{}_keyword_{}_{}.pth'.format(dataset.base_path, keyword_type, keyword_per_class)
+    keyword_path = '{}_{}_{}.pth'.format(data_name, keyword_type, keyword_per_class)
     keyword_path = os.path.join(dataset.root_dir, keyword_path)
 
     if os.path.exists(keyword_path):
@@ -150,6 +150,7 @@ def get_attention_keyword(dataset, attn_model, keyword_per_class=10):
                         batch_size=16, num_workers=4)
 
     SPECIAL_TOKENS = dataset.tokenizer.all_special_ids
+    PAD_TOKEN = dataset.tokenizer.convert_tokens_to_ids(tokenizer.pad_token): # token == pad_token
 
     vocab_size = len(dataset.tokenizer)
 
@@ -169,9 +170,9 @@ def get_attention_keyword(dataset, attn_model, keyword_per_class=10):
             for j in range(attention.size(-1)):  # max_len
                 token = tokens[i][j].item()
 
-                if token == dataset.tokenizer.convert_tokens_to_ids(tokenizer.pad_token): # token == pad_token
+                if token == PAD_TOKEN
                     break
-                
+
                 if token in SPECIAL_TOKENS:  # skip special token
                     continue
 
