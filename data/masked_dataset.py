@@ -32,7 +32,7 @@ class MaskedDataset(object):
         else:
             keyword_per_class = self.keyword_num // self.n_classes
 
-        suffix = 'masked_{}_{}'.format(self.keyword_type, keyword_per_class)
+        suffix = '{}_{}'.format(self.keyword_type, keyword_per_class)
 
         train_path = train_path.replace('.pth', '_{}.pth'.format(suffix))
         return train_path
@@ -84,14 +84,15 @@ def _mask_dataset(tokenizer, dataset, keyword=None,
             elif tok == PAD_TOKEN:
                 break
 
-            if (keyword is None) or (tok in keyword):
-                if random.random() < key_mask_ratio:  # randomly mask keywords
+            if random.random() < key_mask_ratio:  # randomly mask keywords    
+                if (keyword is None) or (tok in keyword): # random MLM or keyword MLM
                     m_token[i] = MASK_TOKEN
                     if keyword is None:
                         m_label[i] = tok  # use full vocabulary
                     else:
                         m_label[i] = keyword.index(tok)  # convert to keyword index
-            else:
+
+            if keyword != None and tok not in keyword:
                 if random.random() < out_mask_ratio:  # randomly mask non-keywords
                     o_token[i] = MASK_TOKEN
 
