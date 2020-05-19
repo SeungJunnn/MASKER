@@ -64,6 +64,7 @@ class MaskerNet(nn.Module):
     def __init__(self, backbone_name, backbone, n_classes, vocab_size):
         super(MaskerNet, self).__init__()
         self.backbone = backbone
+        self.backbone_name = backbone_name
         self.dropout = nn.Dropout(0.1)
         self.n_classes = n_classes
         self.vocab_size = vocab_size
