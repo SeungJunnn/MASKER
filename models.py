@@ -17,8 +17,8 @@ def load_backbone(name, output_attentions=False):
         tokenizer.name = 'roberta-base'
     elif name == 'albert':
         from transformers import AlbertModel, AlbertTokenizer
-        backbone = RobertaModel.from_pretrained('albert-base-v2', output_attentions=output_attentions)
-        tokenizer = RobertaTokenizer.from_pretrained('albert-base-v2')
+        backbone = AlbertModel.from_pretrained('albert-base-v2', output_attentions=output_attentions)
+        tokenizer = AlbertTokenizer.from_pretrained('albert-base-v2')
         tokenizer.name = 'albert-base-v2'
     else:
         raise ValueError('No matching backbone network')
