@@ -150,7 +150,7 @@ def get_attention_keyword(dataset, attn_model, keyword_per_class=10):
                         batch_size=16, num_workers=4)
 
     SPECIAL_TOKENS = dataset.tokenizer.all_special_ids
-    PAD_TOKEN = dataset.tokenizer.convert_tokens_to_ids(tokenizer.pad_token): # token == pad_token
+    PAD_TOKEN = dataset.tokenizer.convert_tokens_to_ids(dataset.tokenizer.pad_token)
 
     vocab_size = len(dataset.tokenizer)
 
@@ -170,9 +170,9 @@ def get_attention_keyword(dataset, attn_model, keyword_per_class=10):
             for j in range(attention.size(-1)):  # max_len
                 token = tokens[i][j].item()
 
-                if token == PAD_TOKEN
+                if token == PAD_TOKEN: # token == pad_token
                     break
-
+                
                 if token in SPECIAL_TOKENS:  # skip special token
                     continue
 
