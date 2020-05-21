@@ -6,6 +6,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 from data.base_dataset import NewsDataset, ReviewDataset, IMDBDataset, SST2Dataset, FoodDataset, ReutersDataset
+from data.biased_dataset import BiasedDataset
 from data.masked_dataset import MaskedDataset
 from models import load_backbone
 
@@ -36,24 +37,21 @@ def get_base_dataset(data_name, tokenizer, split_ratio=1.0, seed=0, test_only=Fa
     return dataset
 
 
-def get_masked_dataset(args, data_name, tokenizer, keyword_type, keyword_per_class, split_ratio=1.0, seed=0):
+def get_biased_dataset(args, data_name, tokenizer, keyword_type, keyword_per_class, split_ratio=1.0, seed=0):
+    dataset = get_base_dataset(data_name, tokenizer, split_ratio, seed)  # base dataset
 
+    print('Initializing biased dataset... (name: {})'.format(data_name))
+    keyword = get_keyword(args, dataset, tokenizer, keyword_type, keyword_per_class)
+    biased_dataset = BiasedDataset(dataset, keyword)
+
+    return biased_dataset
+
+
+def get_masked_dataset(args, data_name, tokenizer, keyword_type, keyword_per_class, split_ratio=1.0, seed=0):
     dataset = get_base_dataset(data_name, tokenizer, split_ratio, seed)  # base dataset
 
     print('Initializing masked dataset... (name: {})'.format(data_name))
-
-    if keyword_type == 'random':
-        keyword_per_class = len(tokenizer)  # full words
-
-    keyword_path = '{}_{}_{}.pth'.format(data_name, keyword_type, keyword_per_class)
-    keyword_path = os.path.join(dataset.root_dir, keyword_path)
-
-    if os.path.exists(keyword_path):
-        keyword = torch.load(keyword_path)
-    else:
-        keyword = get_keyword(args, dataset, tokenizer, keyword_type, keyword_per_class)
-        torch.save(keyword, keyword_path)
-
+    keyword = get_keyword(args, dataset, tokenizer, keyword_type, keyword_per_class)
     masked_dataset = MaskedDataset(dataset, keyword)
 
     return masked_dataset
@@ -69,6 +67,24 @@ class Keyword(object):
 
 
 def get_keyword(args, dataset, tokenizer, keyword_type, keyword_per_class):
+    if keyword_type == 'random':
+        keyword_per_class = len(tokenizer)  # full words
+
+    keyword_path = '{}_keyword_{}_{}.pth'.format(dataset.base_path, keyword_type, keyword_per_class)
+    keyword_path = os.path.join(dataset.root_dir, keyword_path)
+
+    if os.path.exists(keyword_path):
+        keyword = torch.load(keyword_path)
+    else:
+        keyword = _get_keyword(args, dataset, tokenizer, keyword_type, keyword_per_class)
+        torch.save(keyword, keyword_path)
+
+    return keyword
+
+
+def _get_keyword(args, dataset, tokenizer, keyword_type, keyword_per_class):
+    print('Initializing keywords... (keyword type: {})'.format(keyword_type))
+
     if keyword_type == 'tfidf':
         keyword = get_tfidf_keyword(dataset, keyword_per_class)
         keyword = Keyword('tfidf', keyword)
@@ -150,7 +166,7 @@ def get_attention_keyword(dataset, attn_model, keyword_per_class=10):
                         batch_size=16, num_workers=4)
 
     SPECIAL_TOKENS = dataset.tokenizer.all_special_ids
-    PAD_TOKEN = dataset.tokenizer.convert_tokens_to_ids(dataset.tokenizer.pad_token)
+    PAD_TOKEN = dataset.tokenizer.pad_token_id
 
     vocab_size = len(dataset.tokenizer)
 
@@ -170,9 +186,8 @@ def get_attention_keyword(dataset, attn_model, keyword_per_class=10):
             for j in range(attention.size(-1)):  # max_len
                 token = tokens[i][j].item()
 
-                if token == PAD_TOKEN: # token == pad_token
+                if token == PAD_TOKEN:  # break for pad token
                     break
-                
                 if token in SPECIAL_TOKENS:  # skip special token
                     continue
 
@@ -182,7 +197,8 @@ def get_attention_keyword(dataset, attn_model, keyword_per_class=10):
                 attn_freq[token] += 1
 
     for tok in range(vocab_size):
-        attn_score[tok] /= attn_freq[tok]  # normalize by frequency
+        if attn_freq[tok] > 0:
+            attn_score[tok] /= attn_freq[tok]  # normalize by frequency
 
     num = keyword_per_class * dataset.n_classes  # number of total keywords
     keyword = attn_score.argsort(descending=True)[:num].tolist()

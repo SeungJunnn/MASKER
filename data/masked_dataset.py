@@ -6,13 +6,15 @@ from torch.utils.data import TensorDataset
 
 
 class MaskedDataset(object):
-    def __init__(self, base_dataset, keyword=None):
+    def __init__(self, base_dataset, keyword):
         assert base_dataset.train_dataset is not None  # train dataset should be exists
 
         self.base_dataset = base_dataset
+        self.data_name = base_dataset.data_name
+        self.base_path = base_dataset.base_path
+
         self.keyword = keyword.keyword  # keyword values (list)
         self.keyword_type = keyword.keyword_type  # keyword type
-        self.keyword_num = len(self.keyword)  # number of keywords
 
         self.tokenizer = base_dataset.tokenizer
         self.n_classes = base_dataset.n_classes
@@ -28,11 +30,11 @@ class MaskedDataset(object):
         train_path = self.base_dataset._train_path
 
         if self.keyword_type == 'random':
-            keyword_per_class = self.keyword_num
+            keyword_per_class = len(self.keyword)
         else:
-            keyword_per_class = self.keyword_num // self.n_classes
+            keyword_per_class = len(self.keyword) // self.n_classes
 
-        suffix = '{}_{}'.format(self.keyword_type, keyword_per_class)
+        suffix = 'masked_{}_{}'.format(self.keyword_type, keyword_per_class)
 
         train_path = train_path.replace('.pth', '_{}.pth'.format(suffix))
         return train_path
@@ -49,17 +51,17 @@ class MaskedDataset(object):
         seed = self.base_dataset.seed
 
         if self.keyword_type == 'random':  # mask random words with p = 0.15
-            masked_dataset = _mask_dataset(tokenizer, dataset,
-                                           seed=seed, key_mask_ratio=0.15)
+            masked_dataset = _masked_dataset(tokenizer, dataset,
+                                             seed=seed, key_mask_ratio=0.15)
         else:  # mask keywords with p = 0.5
-            masked_dataset = _mask_dataset(tokenizer, dataset, keyword=self.keyword,
-                                           seed=seed, key_mask_ratio=0.5)
+            masked_dataset = _masked_dataset(tokenizer, dataset, keyword=self.keyword,
+                                             seed=seed, key_mask_ratio=0.5)
 
         torch.save(masked_dataset, self._train_path)
 
 
-def _mask_dataset(tokenizer, dataset, keyword=None,
-                  seed=0, key_mask_ratio=0.5, out_mask_ratio=0.9):
+def _masked_dataset(tokenizer, dataset, keyword=None,
+                    seed=0, key_mask_ratio=0.5, out_mask_ratio=0.9):
 
     CLS_TOKEN = tokenizer.cls_token_id
     PAD_TOKEN = tokenizer.pad_token_id
@@ -84,7 +86,7 @@ def _mask_dataset(tokenizer, dataset, keyword=None,
             elif tok == PAD_TOKEN:
                 break
 
-            if random.random() < key_mask_ratio:  # randomly mask keywords    
+            if random.random() < key_mask_ratio:  # randomly mask keywords
                 if (keyword is None) or (tok in keyword): # random MLM or keyword MLM
                     m_token[i] = MASK_TOKEN
                     if keyword is None:

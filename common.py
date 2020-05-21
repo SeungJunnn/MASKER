@@ -31,12 +31,14 @@ def parse_args(mode):
 
 
 def _parse_args_train(parser):
-    parser.add_argument("--train_type", help='train type (base|masker)',
-                        choices=['base', 'masker'],
+    parser.add_argument("--train_type", help='train type (base|residual|masker)',
+                        choices=['base', 'residual', 'masker'],
                         default='masker', type=str)
+    parser.add_argument("--use_biased_dataset", help='use biased dataset to train a biased model',
+                        action='store_true')
     parser.add_argument("--optimizer", help='optimizer type (adam_ood|adam_gen)',
                         choices=['adam_ood', 'adam_gen'],
-                        default='adam_ood', type=int)
+                        default='adam_ood', type=str)
     parser.add_argument("--epochs", help='training epochs',
                         default=10, type=int)
 
@@ -45,6 +47,9 @@ def _parse_args_train(parser):
                         default='attention', type=str)
     parser.add_argument("--keyword_per_class", help='number of keywords for each class',
                         default=10, type=int)
+
+    parser.add_argument("--biased_model_path", help='path for the pre-trained biased model',
+                        default=None, type=str)
 
     parser.add_argument("--attn_backbone", help='backbone for attention network (None: args.backbone)',
                         default=None, type=str)

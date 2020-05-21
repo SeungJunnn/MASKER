@@ -5,9 +5,9 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from data import get_base_dataset, get_masked_dataset
+from data import get_base_dataset, get_biased_dataset, get_masked_dataset
 from models import load_backbone, BaseNet, MaskerNet
-from training import train_base, train_masker
+from training import train_base, train_residual, train_masker
 from evals import test_acc
 
 from common import CKPT_PATH, parse_args
@@ -30,16 +30,25 @@ def main():
     backbone, tokenizer = load_backbone(args.backbone)
 
     print('Initializing dataset and model...')
-    if args.train_type == 'base':
-        dataset = get_base_dataset(args.dataset, tokenizer, args.split_ratio, args.seed)
+    if args.train_type in ['base', 'residual']:
+        # load base/biased dataset and base model
+        if not args.use_biased_dataset:
+            dataset = get_base_dataset(args.dataset, tokenizer, args.split_ratio, args.seed)
+        else:
+            dataset = get_biased_dataset(args, args.dataset, tokenizer, args.keyword_type, args.keyword_per_class,
+                                         args.split_ratio, args.seed)
         model = BaseNet(args.backbone, backbone, dataset.n_classes).to(device)
+        # load biased model
+        if args.train_type == 'residual':
+            assert args.biased_model_path is not None
+            biased_model = BaseNet(args.backbone, backbone, dataset.n_classes).to(device)
+            state_dict = torch.load(os.path.join(CKPT_PATH, args.dataset, args.biased_model_path))
+            biased_model.load_state_dict(state_dict)
     else:
+        # load masked dataset and MASKER model
         dataset = get_masked_dataset(args, args.dataset, tokenizer, args.keyword_type, args.keyword_per_class,
                                      args.split_ratio, args.seed)
         model = MaskerNet(args.backbone, backbone, dataset.n_classes, dataset.keyword_num).to(device)
-
-    if torch.cuda.device_count() > 1:
-        model = nn.DataParallel(model)
 
     if args.optimizer == 'adam_ood':
         optimizer = optim.Adam([
@@ -48,6 +57,11 @@ def main():
         ], lr=1e-3, eps=1e-8)
     else:
         optimizer = optim.Adam(model.parameters(), lr=1e-5, eps=1e-8)
+
+    if torch.cuda.device_count() > 1:
+        model = nn.DataParallel(model)
+        if args.train_type == 'residual':
+            biased_model = nn.DataParallel(biased_model)
 
     train_loader = DataLoader(dataset.train_dataset, shuffle=True, drop_last=True,
                               batch_size=args.batch_size, num_workers=4)
@@ -58,6 +72,8 @@ def main():
     for epoch in range(1, args.epochs + 1):
         if args.train_type == 'base':
             train_base(args, train_loader, model, optimizer, epoch)
+        elif args.train_type == 'residual':
+            train_residual(args, train_loader, model, biased_model, optimizer, epoch)
         else:
             train_masker(args, train_loader, model, optimizer, epoch)
 
@@ -67,8 +83,15 @@ def main():
     if isinstance(model, nn.DataParallel):
         model = model.module
 
+    print('Save model...')
     os.makedirs(os.path.join(CKPT_PATH, dataset.data_name), exist_ok=True)
-    save_path = os.path.join(CKPT_PATH, dataset.data_name, dataset.base_path + '.model')
+
+    if not args.use_biased_dataset:
+        model_path = dataset.base_path + '.model'
+    else:
+        model_path = dataset.base_path + '_biased.model'
+
+    save_path = os.path.join(CKPT_PATH, dataset.data_name, model_path)
     torch.save(model.state_dict(), save_path)
 
 

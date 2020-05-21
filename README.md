@@ -40,6 +40,8 @@ DATA_PATH/{data_name}/{base_path}_{biased/masked}_{keyword_type}_{keyword_per_cl
 
 ### Train vanilla BERT
 
+Train a vanilla BERT model. The model will be saved in `review_bert-base-uncased_sub_0.25_seed_0.model`.\
+One need to train vanilla BERT first to get attention keywords for residual ensemble and MASKER models.
 ```
 python train.py --dataset review --split_ratio 0.25 --seed 0 \
     --train_type base \
@@ -48,17 +50,28 @@ python train.py --dataset review --split_ratio 0.25 --seed 0 \
 
 ### Train residual ensemble
 
-Train a bias-only model... (TBD)
+Train a keyword biased model. Need to specify the `attn_model_path` for attention keywords.
+```
+python train.py --dataset review --split_ratio 0.25 --seed 0 \
+    --train_type base --use_biased_dataset \
+    --backbone bert --classifier_type softmax --optimizer adam_ood \
+    --attn_model_path review_bert-base-uncased_sub_0.25_seed_0.model
+```
+
+Train a residual ensemble [1,2] model. Need to specify the `biased_model_path`.
+```
+python train.py --dataset review --split_ratio 0.25 --seed 0 \
+    --train_type residual \
+    --backbone bert --classifier_type softmax --optimizer adam_ood \
+    --biased_model_path review_bert-base-uncased_sub_0.25_seed_0_biased.model
+```
 
 [1] Clark et al. Don't Take the Easy Way Out: Ensemble Based Methods for Avoiding Known Dataset Biases. EMNLP 2019. \
 [2] He et al. Unlearn Dataset Bias in Natural Language Inference by Fitting the Residual. EMNLP Workshop 2019.
 
 ### Train MASKER
 
-For attention keywords, one needs a biased model.
-Train a [vanilla BERT](#train-vanilla-bert), and the model will be saved in
-saved in `review_bert-base-uncased_sub_0.25_seed_0.model`.
-Specify the model path as the `attn_model_path`.
+Train a MASKER model. Need to specify the `attn_model_path` for attention keywords.
 ```
 python train.py --dataset review --split_ratio 0.25 --seed 0 \
     --train_type masker \
