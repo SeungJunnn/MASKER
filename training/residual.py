@@ -25,17 +25,17 @@ def train_residual(args, loader, model, biased_model, optimizer, epoch=0):
         labels = labels.squeeze(1)  # (B)
 
         with torch.no_grad():
-            out_biased = biased_model(tokens)  # (B, C)
-        out_cls = model(tokens)  # (B, C)
+            out_b = biased_model(tokens)  # (B, C)
+        out_c = model(tokens)  # (B, C)
 
         # classification loss
         if args.classifier_type == 'softmax':
-            p_mult = F.softmax(out_cls, dim=1) * F.softmax(out_biased, dim=1)  # multiply probs
-            loss_cls = F.nll_loss(torch.log(p_mult), labels)  # log probs, not logits
+            p_b = F.softmax(out_b, dim=1)
+            p_c = F.softmax(out_c, dim=1)
+            out_mult = torch.log(p_b) + torch.log(p_c)  # product of experts
+            loss_cls = F.cross_entropy(out_mult, labels)
         else:
-            p_mult = torch.sigmoid(out_cls) * torch.sigmoid(out_biased)  # multiply probs
-            labels = one_hot(labels, n_classes=n_classes)
-            loss_cls = F.binary_cross_entropy(p_mult, labels)  # probs, not logits
+            raise NotImplementedError()
 
         # total loss
         loss = loss_cls
