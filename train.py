@@ -48,7 +48,7 @@ def main():
         # load masked dataset and MASKER model
         dataset = get_masked_dataset(args, args.dataset, tokenizer, args.keyword_type, args.keyword_per_class,
                                      args.split_ratio, args.seed)
-        model = MaskerNet(args.backbone, backbone, dataset.n_classes, dataset.keyword_num).to(device)
+        model = MaskerNet(args.backbone, backbone, dataset.n_classes, dataset.n_keywords).to(device)
 
     if args.optimizer == 'adam_ood':
         optimizer = optim.Adam([

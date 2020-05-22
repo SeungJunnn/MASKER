@@ -1,4 +1,5 @@
 import os
+import time
 import numpy as np
 
 import torch
@@ -16,8 +17,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def get_base_dataset(data_name, tokenizer, split_ratio=1.0, seed=0, test_only=False, remain=False):
-
     print('Initializing base dataset... (name: {})'.format(data_name))
+    start_time = time.time()
 
     if data_name == 'news':
         dataset = NewsDataset(tokenizer, split_ratio, seed, test_only=test_only, remain=remain)
@@ -34,6 +35,7 @@ def get_base_dataset(data_name, tokenizer, split_ratio=1.0, seed=0, test_only=Fa
     else:
         raise ValueError('No matching dataset')
 
+    print('{:d}s elapsed'.format(int(time.time() - start_time)))
     return dataset
 
 
@@ -41,9 +43,12 @@ def get_biased_dataset(args, data_name, tokenizer, keyword_type, keyword_per_cla
     dataset = get_base_dataset(data_name, tokenizer, split_ratio, seed)  # base dataset
 
     print('Initializing biased dataset... (name: {})'.format(data_name))
+    start_time = time.time()
+
     keyword = get_keyword(args, dataset, tokenizer, keyword_type, keyword_per_class)
     biased_dataset = BiasedDataset(dataset, keyword)
 
+    print('{:d}s elapsed'.format(int(time.time() - start_time)))
     return biased_dataset
 
 
@@ -51,9 +56,12 @@ def get_masked_dataset(args, data_name, tokenizer, keyword_type, keyword_per_cla
     dataset = get_base_dataset(data_name, tokenizer, split_ratio, seed)  # base dataset
 
     print('Initializing masked dataset... (name: {})'.format(data_name))
+    start_time = time.time()
+
     keyword = get_keyword(args, dataset, tokenizer, keyword_type, keyword_per_class)
     masked_dataset = MaskedDataset(dataset, keyword)
 
+    print('{:d}s elapsed'.format(int(time.time() - start_time)))
     return masked_dataset
 
 
@@ -84,6 +92,7 @@ def get_keyword(args, dataset, tokenizer, keyword_type, keyword_per_class):
 
 def _get_keyword(args, dataset, tokenizer, keyword_type, keyword_per_class):
     print('Initializing keywords... (keyword type: {})'.format(keyword_type))
+    start_time = time.time()
 
     if keyword_type == 'tfidf':
         keyword = get_tfidf_keyword(dataset, keyword_per_class)
@@ -117,6 +126,7 @@ def _get_keyword(args, dataset, tokenizer, keyword_type, keyword_per_class):
         keyword = list(tokenizer.vocab.values())  # all words
         keyword = Keyword('random', keyword)
 
+    print('{:d}s elapsed'.format(int(time.time() - start_time)))
     return keyword
 
 

@@ -16,6 +16,7 @@ class BiasedDataset(object):
 
         self.keyword = keyword.keyword  # keyword values (list)
         self.keyword_type = keyword.keyword_type  # keyword type
+        self.n_keywords = len(self.keyword)
 
         self.tokenizer = base_dataset.tokenizer
         self.n_classes = base_dataset.n_classes
@@ -30,7 +31,7 @@ class BiasedDataset(object):
     def _train_path(self):
         train_path = self.base_dataset._train_path
 
-        keyword_per_class = len(self.keyword) // self.n_classes
+        keyword_per_class = self.n_keywords // self.n_classes
         suffix = 'biased_{}_{}'.format(self.keyword_type, keyword_per_class)
 
         train_path = train_path.replace('.pth', '_{}.pth'.format(suffix))
@@ -51,6 +52,8 @@ class BiasedDataset(object):
 
 
 def _biased_dataset(tokenizer, dataset, keyword):
+
+    keyword = dict.fromkeys(keyword, 1)  # convert to dict
 
     CLS_TOKEN = tokenizer.cls_token_id
     PAD_TOKEN = tokenizer.pad_token_id

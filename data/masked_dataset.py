@@ -15,6 +15,7 @@ class MaskedDataset(object):
 
         self.keyword = keyword.keyword  # keyword values (list)
         self.keyword_type = keyword.keyword_type  # keyword type
+        self.n_keywords = len(self.keyword)
 
         self.tokenizer = base_dataset.tokenizer
         self.n_classes = base_dataset.n_classes
@@ -30,9 +31,9 @@ class MaskedDataset(object):
         train_path = self.base_dataset._train_path
 
         if self.keyword_type == 'random':
-            keyword_per_class = len(self.keyword)
+            keyword_per_class = self.n_keywords
         else:
-            keyword_per_class = len(self.keyword) // self.n_classes
+            keyword_per_class = self.n_keywords // self.n_classes
 
         suffix = 'masked_{}_{}'.format(self.keyword_type, keyword_per_class)
 
@@ -63,6 +64,8 @@ class MaskedDataset(object):
 def _masked_dataset(tokenizer, dataset, keyword=None,
                     seed=0, key_mask_ratio=0.5, out_mask_ratio=0.9):
 
+    keyword = dict.fromkeys(keyword, 1)  # convert to dict
+
     CLS_TOKEN = tokenizer.cls_token_id
     PAD_TOKEN = tokenizer.pad_token_id
     MASK_TOKEN = tokenizer.mask_token_id
@@ -87,14 +90,14 @@ def _masked_dataset(tokenizer, dataset, keyword=None,
                 break
 
             if random.random() < key_mask_ratio:  # randomly mask keywords
-                if (keyword is None) or (tok in keyword): # random MLM or keyword MLM
+                if (keyword is None) or (tok in keyword):  # random MLM or keyword MLM
                     m_token[i] = MASK_TOKEN
                     if keyword is None:
                         m_label[i] = tok  # use full vocabulary
                     else:
                         m_label[i] = keyword.index(tok)  # convert to keyword index
 
-            if keyword != None and tok not in keyword:
+            if (keyword is not None) and (tok not in keyword):
                 if random.random() < out_mask_ratio:  # randomly mask non-keywords
                     o_token[i] = MASK_TOKEN
 
