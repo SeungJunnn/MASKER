@@ -52,9 +52,9 @@ def main():
 
     if args.optimizer == 'adam_ood':
         optimizer = optim.Adam([
-            {'params': model.parameters()},
+            #{'params': model.parameters()},
             {'params': model.backbone.parameters(), 'lr': 5e-5}
-        ], lr=1e-3, eps=1e-8)
+        ], lr=1e-5, eps=1e-8)
     else:
         optimizer = optim.Adam(model.parameters(), lr=1e-5, eps=1e-8)
 
