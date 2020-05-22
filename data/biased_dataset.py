@@ -60,24 +60,31 @@ def _biased_dataset(tokenizer, dataset, keyword):
     labels = dataset.tensors[1]
 
     biased_tokens = []
+    biased_labels = []
 
-    for token in tokens:
+    for (token, label) in zip(tokens, labels):
         b_token = token.clone()  # biased token (keyword only)
 
+        count = 0  # number of keywords
         for i, tok in enumerate(token):
             if tok == CLS_TOKEN:
                 continue
             elif tok == PAD_TOKEN:
                 break
 
-            if not (tok in keyword):  # keep only keywords
+            if tok in keyword:
+                count += 1
+            else:
                 b_token[i] = MASK_TOKEN
 
-        biased_tokens.append(b_token)  # (biased)
+        if count > 0:  # number of keywords > 0
+            biased_tokens.append(b_token)  # (biased)
+            biased_labels.append(label)  # (label)
 
     biased_tokens = torch.stack(biased_tokens)
+    biased_labels = torch.stack(biased_labels)
 
-    biased_dataset = TensorDataset(biased_tokens, labels)
+    biased_dataset = TensorDataset(biased_tokens, biased_labels)
 
     return biased_dataset
 
