@@ -86,10 +86,13 @@ def main():
     print('Save model...')
     os.makedirs(os.path.join(CKPT_PATH, dataset.data_name), exist_ok=True)
 
-    if not args.use_biased_dataset:
-        model_path = dataset.base_path + '.model'
+    if args.train_type=='masker':
+        model_path = dataset.base_path + '_masker.model'
     else:
-        model_path = dataset.base_path + '_biased.model'
+        if not args.use_biased_dataset:
+            model_path = dataset.base_path + '.model'
+        else:
+            model_path = dataset.base_path + '_biased.model'
 
     save_path = os.path.join(CKPT_PATH, dataset.data_name, model_path)
     torch.save(model.state_dict(), save_path)
