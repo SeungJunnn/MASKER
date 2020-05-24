@@ -75,7 +75,7 @@ def _biased_dataset(tokenizer, dataset, keyword):
             elif tok == PAD_TOKEN:
                 break
 
-            if tok in keyword:
+            if tok.item() in keyword:
                 count += 1
             else:
                 b_token[i] = MASK_TOKEN
