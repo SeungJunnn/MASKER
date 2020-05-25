@@ -89,10 +89,13 @@ def main():
     if args.train_type=='masker':
         model_path = dataset.base_path + '_masker.model'
     else:
-        if not args.use_biased_dataset:
-            model_path = dataset.base_path + '.model'
-        else:
+        if args.use_biased_dataset:
             model_path = dataset.base_path + '_biased.model'
+        elif args.train_type=='residual':
+            model_path = dataset.base_path + '_residual.model'
+        else:
+            model_path = dataset.base_path + '.model'
+            
 
     save_path = os.path.join(CKPT_PATH, dataset.data_name, model_path)
     torch.save(model.state_dict(), save_path)
