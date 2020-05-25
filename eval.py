@@ -26,8 +26,8 @@ def main():
     assert args.model_path is not None
     state_dict = torch.load(os.path.join(CKPT_PATH, args.dataset, args.model_path))
 
-    for key in state_dict.keys():  # only keep base parameters
-        if key.split('.')[0] not in ['backbone', 'net_cls']:
+    for key in list(state_dict.keys()):  # only keep base parameters
+        if key.split('.')[0] not in ['backbone', 'dense', 'net_cls']:
             state_dict.pop(key)
 
     model.load_state_dict(state_dict)
@@ -40,6 +40,9 @@ def main():
 
     print('Evaluate {}...'.format(args.eval_type))
     if args.eval_type == 'acc':
+        dataset = get_base_dataset(args.test_dataset, tokenizer, args.split_ratio, args.seed, test_only=True)
+        test_loader = DataLoader(dataset.test_dataset, shuffle=False,
+                             batch_size=args.batch_size, num_workers=4)
         acc = test_acc(test_loader, model)
         print('test acc: {:.2f}'.format(acc))
 
