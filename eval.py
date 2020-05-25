@@ -21,7 +21,7 @@ def main():
     print('Loading dataset and model...')
     backbone, tokenizer = load_backbone(args.backbone)
     dataset = get_base_dataset(args.dataset, tokenizer, args.split_ratio, args.seed, test_only=True)
-    model = BaseNet(backbone, dataset.n_classes).to(device)
+    model = BaseNet(args.backbone, backbone, dataset.n_classes).to(device)
 
     assert args.model_path is not None
     state_dict = torch.load(os.path.join(CKPT_PATH, args.dataset, args.model_path))
