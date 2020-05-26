@@ -14,7 +14,7 @@ def parse_args(mode):
     parser.add_argument("--split_ratio", help='split ratio for ID/OOD sets',
                         default=1.0, type=float)
     parser.add_argument("--backbone", help='backbone network',
-                        choices=['bert', 'roberta'],
+                        choices=['bert', 'roberta', 'albert'],
                         default='bert', type=str)
     parser.add_argument("--classifier_type", help='classifier type (softmax|sigmoid)',
                         choices=['softmax', 'sigmoid'],
