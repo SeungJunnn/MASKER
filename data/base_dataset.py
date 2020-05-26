@@ -415,5 +415,206 @@ class ReutersDataset(BaseDataset):
 
         return dataset
 
+class MSRvidDataset(BaseDataset):
+    def __init__(self, tokenizer, test_only=False):
+        super(MSRvidDataset, self).__init__('msrvid', 1, tokenizer, test_only=test_only)
 
+    def _preprocess(self):
+        print('Pre-processing STS-B MSRvid dataset...')
+        train_dataset = self._load_dataset('train')
+        test_dataset = self._load_dataset('test')
 
+        torch.save(train_dataset, self._train_path)
+        torch.save(test_dataset, self._test_path)
+
+    def _load_dataset(self, mode='train', raw_text=False): #filename should be in ['Images, MSRvid, Headlines, MSRpar']
+        assert mode in ['train', 'test']
+
+        source_path = os.path.join(self.root_dir, '{}.tsv'.format(mode))
+        with open(source_path, encoding='utf-8') as f:
+            lines = f.readlines()
+
+        inputs = []
+        labels = []
+
+        for line in lines:
+            toks = line.split('\t')
+
+            if not toks[2] == 'MSRvid':
+                continue
+
+            try:
+                label = float(toks[-1])
+            except ValueError:
+                continue
+
+            if raw_text:
+                text = toks[7]+toks[8]
+            else:
+                raw_text = toks[7]+self.tokenizer.sep_token+toks[8]
+                text = tokenize(self.tokenizer, raw_text)
+
+            label = torch.tensor(label).long()
+
+            inputs.append(text)
+            labels.append(label)
+
+        if raw_text:
+            dataset = zip(inputs, labels)
+        else:
+            dataset = create_tensor_dataset(inputs, labels)
+
+        return dataset
+
+class ImagesDataset(BaseDataset):
+    def __init__(self, tokenizer, test_only=False):
+        super(ImagesDataset, self).__init__('images', 1, tokenizer, test_only=test_only)
+
+    def _preprocess(self):
+        print('Pre-processing STS-B Images dataset...')
+        train_dataset = self._load_dataset('train')
+        test_dataset = self._load_dataset('test')
+
+        torch.save(train_dataset, self._train_path)
+        torch.save(test_dataset, self._test_path)
+
+    def _load_dataset(self, mode='train', raw_text=False): #filename should be in ['Images, MSRvid, Headlines, MSRpar']
+        assert mode in ['train', 'test']
+
+        source_path = os.path.join(self.root_dir, '{}.tsv'.format(mode))
+        with open(source_path, encoding='utf-8') as f:
+            lines = f.readlines()
+
+        inputs = []
+        labels = []
+
+        for line in lines:
+            toks = line.split('\t')
+
+            if not toks[2] == 'images':
+                continue
+
+            try:
+                label = float(toks[-1])
+            except ValueError:
+                continue
+
+            if raw_text:
+                text = toks[7]+toks[8]
+            else:
+                raw_text = toks[7]+self.tokenizer.sep_token+toks[8]
+                text = tokenize(self.tokenizer, raw_text)
+
+            label = torch.tensor(label).long()
+
+            inputs.append(text)
+            labels.append(label)
+
+        if raw_text:
+            dataset = zip(inputs, labels)
+        else:
+            dataset = create_tensor_dataset(inputs, labels)
+
+        return dataset
+
+class MSRparDataset(BaseDataset):
+    def __init__(self, tokenizer, test_only=False):
+        super(MSRparDataset, self).__init__('msrpar', 1, tokenizer, test_only=test_only)
+
+    def _preprocess(self):
+        print('Pre-processing STS-B MSRpar dataset...')
+        train_dataset = self._load_dataset('train')
+        test_dataset = self._load_dataset('test')
+
+        torch.save(train_dataset, self._train_path)
+        torch.save(test_dataset, self._test_path)
+
+    def _load_dataset(self, mode='train', raw_text=False): #filename should be in ['Images, MSRvid, Headlines, MSRpar']
+        assert mode in ['train', 'test']
+
+        source_path = os.path.join(self.root_dir, '{}.tsv'.format(mode))
+        with open(source_path, encoding='utf-8') as f:
+            lines = f.readlines()
+
+        inputs = []
+        labels = []
+
+        for line in lines:
+            toks = line.split('\t')
+
+            if not toks[2] == 'MSRpar':
+                continue
+
+            try:
+                label = float(toks[-1])
+            except ValueError:
+                continue
+
+            if raw_text:
+                text = toks[7]+toks[8]
+            else:
+                raw_text = toks[7]+self.tokenizer.sep_token+toks[8]
+                text = tokenize(self.tokenizer, raw_text)
+
+            label = torch.tensor(label).long()
+
+            inputs.append(text)
+            labels.append(label)
+
+        if raw_text:
+            dataset = zip(inputs, labels)
+        else:
+            dataset = create_tensor_dataset(inputs, labels)
+
+        return dataset
+
+class HeadlinesDataset(BaseDataset):
+    def __init__(self, tokenizer, test_only=False):
+        super(HeadlinesDataset, self).__init__('headlines', 1, tokenizer, test_only=test_only)
+
+    def _preprocess(self):
+        print('Pre-processing STS-B Headlines dataset...')
+        train_dataset = self._load_dataset('train')
+        test_dataset = self._load_dataset('test')
+
+        torch.save(train_dataset, self._train_path)
+        torch.save(test_dataset, self._test_path)
+
+    def _load_dataset(self, mode='train', raw_text=False): #filename should be in ['Images, MSRvid, Headlines, MSRpar']
+        assert mode in ['train', 'test']
+
+        source_path = os.path.join(self.root_dir, '{}.tsv'.format(mode))
+        with open(source_path, encoding='utf-8') as f:
+            lines = f.readlines()
+
+        inputs = []
+        labels = []
+
+        for line in lines:
+            toks = line.split('\t')
+
+            if not toks[2] == 'headlines':
+                continue
+
+            try:
+                label = float(toks[-1])
+            except ValueError:
+                continue
+
+            if raw_text:
+                text = toks[7]+toks[8]
+            else:
+                raw_text = toks[7]+self.tokenizer.sep_token+toks[8]
+                text = tokenize(self.tokenizer, raw_text)
+
+            label = torch.tensor(label).long()
+
+            inputs.append(text)
+            labels.append(label)
+
+        if raw_text:
+            dataset = zip(inputs, labels)
+        else:
+            dataset = create_tensor_dataset(inputs, labels)
+
+        return dataset
