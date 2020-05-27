@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from data.base_dataset import NewsDataset, ReviewDataset, IMDBDataset, SST2Dataset, FoodDataset, ReutersDataset
+from data.base_dataset import NewsDataset, ReviewDataset, IMDBDataset, SST2Dataset, FoodDataset, ReutersDataset, MSRvidDataset, ImagesDataset, MSRparDataset, HeadlinesDataset
 from data.masked_dataset import MaskedDataset
 from models import load_backbone
 
@@ -43,6 +43,17 @@ def get_base_dataset(data_name, tokenizer, split_ratio=1.0, seed=0, test_only=Fa
 
     return dataset
 
+def get_biased_dataset(args, data_name, tokenizer, keyword_type, keyword_per_class, split_ratio=1.0, seed=0):
+    dataset = get_base_dataset(data_name, tokenizer, split_ratio, seed)  # base dataset
+
+    print('Initializing biased dataset... (name: {})'.format(data_name))
+    start_time = time.time()
+
+    keyword = get_keyword(args, dataset, tokenizer, keyword_type, keyword_per_class)
+    biased_dataset = BiasedDataset(dataset, keyword)
+
+    print('{:d}s elapsed'.format(int(time.time() - start_time)))
+    return biased_dataset
 
 def get_masked_dataset(args, data_name, tokenizer, keyword_type, keyword_per_class, split_ratio=1.0, seed=0):
 

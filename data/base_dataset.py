@@ -403,7 +403,7 @@ class ReutersDataset(BaseDataset):
             if not raw_text:
                 text = tokenize(self.tokenizer, text)
 
-            label = torch.tensor(-1).long()  # OOD class: -1
+            label = torch.tensor(-1).float()  # OOD class: -1
 
             inputs.append(text)
             labels.append(label)
@@ -451,14 +451,13 @@ class MSRvidDataset(BaseDataset):
             if raw_text:
                 text = toks[7]+toks[8]
             else:
-                raw_text = toks[7]+self.tokenizer.sep_token+toks[8]
-                text = tokenize(self.tokenizer, raw_text)
+                text = toks[7]+self.tokenizer.sep_token+toks[8]
+                text = tokenize(self.tokenizer, text)
 
-            label = torch.tensor(label).long()
+            label = torch.tensor(label).float()
 
             inputs.append(text)
             labels.append(label)
-
         if raw_text:
             dataset = zip(inputs, labels)
         else:
@@ -502,10 +501,10 @@ class ImagesDataset(BaseDataset):
             if raw_text:
                 text = toks[7]+toks[8]
             else:
-                raw_text = toks[7]+self.tokenizer.sep_token+toks[8]
-                text = tokenize(self.tokenizer, raw_text)
+                text = toks[7]+self.tokenizer.sep_token+toks[8]
+                text = tokenize(self.tokenizer, text)
 
-            label = torch.tensor(label).long()
+            label = torch.tensor(label).float()
 
             inputs.append(text)
             labels.append(label)
@@ -553,10 +552,10 @@ class MSRparDataset(BaseDataset):
             if raw_text:
                 text = toks[7]+toks[8]
             else:
-                raw_text = toks[7]+self.tokenizer.sep_token+toks[8]
-                text = tokenize(self.tokenizer, raw_text)
+                text = toks[7]+self.tokenizer.sep_token+toks[8]
+                text = tokenize(self.tokenizer, text)
 
-            label = torch.tensor(label).long()
+            label = torch.tensor(label).float()
 
             inputs.append(text)
             labels.append(label)
@@ -604,10 +603,10 @@ class HeadlinesDataset(BaseDataset):
             if raw_text:
                 text = toks[7]+toks[8]
             else:
-                raw_text = toks[7]+self.tokenizer.sep_token+toks[8]
-                text = tokenize(self.tokenizer, raw_text)
+                text = toks[7]+self.tokenizer.sep_token+toks[8]
+                text = tokenize(self.tokenizer, text)
 
-            label = torch.tensor(label).long()
+            label = torch.tensor(label).float()
 
             inputs.append(text)
             labels.append(label)
