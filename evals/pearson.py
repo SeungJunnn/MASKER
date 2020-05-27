@@ -3,10 +3,10 @@ from scipy.stats import pearsonr, spearmanr
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def test_pearson(loader, model):
-	print('Compute Pearson Correlation...')
+    print('Compute Pearson Correlation...')
 
-	preds = []
-	out_label_ids = []
+    preds = []
+    out_label_ids = []
     for i, (tokens, labels) in enumerate(loader):
         tokens = tokens.to(device)
 
