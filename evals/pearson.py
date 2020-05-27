@@ -19,7 +19,7 @@ def test_pearson(loader, model):
         out_label_ids.append(labels.cpu().numpy())
 
     preds=np.concatenate(preds)
-    out_label_ids=out_label_ids.concatenate(out_label_ids)
+    out_label_ids=np.concatenate(out_label_ids)
 
     pearson_corr = pearsonr(preds, out_label_ids)[0]
     spearman_corr = spearmanr(preds, out_label_ids)[0]
