@@ -29,6 +29,8 @@ def train_base(args, loader, model, optimizer, epoch=0):
         # classification loss
         if args.classifier_type == 'softmax':
             loss_cls = F.cross_entropy(out_cls, labels)
+        elif args.classifier_type == 'regression':
+            loss_cls = F.mse_loss(out_cls, labels)
         else:
             labels = one_hot(labels, n_classes=n_classes)
             loss_cls = F.binary_cross_entropy_with_logits(out_cls, labels)
