@@ -17,7 +17,7 @@ def parse_args(mode):
                         choices=['bert', 'roberta', 'albert'],
                         default='bert', type=str)
     parser.add_argument("--classifier_type", help='classifier type (softmax|sigmoid)',
-                        choices=['softmax', 'sigmoid'],
+                        choices=['softmax', 'sigmoid', 'regression'],
                         default='sigmoid', type=str)
     parser.add_argument("--seed", help='random seed',
                         default=0, type=int)
