@@ -1,3 +1,4 @@
+import torch
 from scipy.stats import pearsonr, spearmanr
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
