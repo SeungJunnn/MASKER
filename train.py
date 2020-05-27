@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from data import get_base_dataset, get_biased_dataset, get_masked_dataset
 from models import load_backbone, BaseNet, MaskerNet
 from training import train_base, train_residual, train_masker
-from evals import test_acc
+from evals import test_acc, test_pearson
 
 from common import CKPT_PATH, parse_args
 
@@ -78,8 +78,12 @@ def main():
         else:
             train_masker(args, train_loader, model, optimizer, epoch)
 
-        acc = test_acc(test_loader, model)
-        print('test acc: {:.2f}'.format(acc))
+        if args.classifier_type=='regression':
+            corr = test_pearson(test_loader, model)
+            print('test corr: {:.2f}'.format(corr))
+        else:
+            acc = test_acc(test_loader, model)
+            print('test acc: {:.2f}'.format(acc))
 
     if isinstance(model, nn.DataParallel):
         model = model.module
