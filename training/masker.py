@@ -30,10 +30,14 @@ def train_masker(args, loader, model, optimizer, epoch=0):
         out_cls, out_ssl, out_ood = model(tokens, training=True)
 
         # classification loss
+
         if args.classifier_type == 'softmax':
             loss_cls = F.cross_entropy(out_cls, labels_cls)
+        elif args.classifier_type == 'regression':
+            out_cls = out_cls.squeeze()
+            loss_cls = F.mse_loss(out_cls, labels_cls.float())
         else:
-            labels_cls = one_hot(labels_cls, n_classes=n_classes)
+            labels_cls = one_hot(label_cls, n_classes=n_classes)
             loss_cls = F.binary_cross_entropy_with_logits(out_cls, labels_cls)
 
         # self-supervision loss
@@ -42,13 +46,15 @@ def train_masker(args, loader, model, optimizer, epoch=0):
         loss_ssl = loss_ssl * args.lambda_ssl
 
         # outlier regularization loss
-        out_ood = F.log_softmax(out_ood, dim=1)  # log-probs
-        unif = uniform_labels(labels, n_classes=n_classes)
-        loss_ent = F.kl_div(out_ood, unif)
-        loss_ent = loss_ent * args.lambda_ent
-
-        # total loss
-        loss = loss_cls + loss_ssl + loss_ent
+        if args.classifier_type!='regression':
+            out_ood = F.log_softmax(out_ood, dim=1)  # log-probs
+            unif = uniform_labels(labels, n_classes=n_classes)
+            loss_ent = F.kl_div(out_ood, unif)
+            loss_ent = loss_ent * args.lambda_ent
+            loss = loss_cls + loss_ssl + loss_ent
+        else:
+            loss_ent=torch.FloatTensor([0]).to(device)
+            loss = loss_cls + loss_ssl
 
         optimizer.zero_grad()
         loss.backward()
