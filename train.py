@@ -51,10 +51,10 @@ def main():
                                      args.split_ratio, args.seed)
         model = MaskerNet(args.backbone, backbone, dataset.n_classes, dataset.n_keywords).to(device)
 
-    if args.optimizer == 'adam_ood':
+    if args.optimizer == 'adam_masker':
         optimizer = optim.Adam([
             #{'params': model.parameters()},
-            {'params': model.backbone.parameters(), 'lr': 5e-5}
+            {'params': model.backbone.parameters(), 'lr': 5e-6}
         ], lr=1e-5, eps=1e-8)
     else:
         optimizer = optim.Adam(model.parameters(), lr=1e-5, eps=1e-8)
