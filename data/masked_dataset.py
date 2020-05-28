@@ -64,13 +64,22 @@ class MaskedDataset(object):
 def _masked_dataset(tokenizer, dataset, keyword=None,
                     seed=0, key_mask_ratio=0.5, out_mask_ratio=0.9):
 
-    keyword = dict.fromkeys(keyword, 1)  # convert to dict
+    #keyword_dict = dict.fromkeys(keyword, i for i in range(len(keyword)))  # convert to dict
+    keyword_dict={}
+    for i,word in enumerate(keyword):
+        keyword_dict[word]=i
+
+    print(keyword_dict)
+
+    keyword=keyword_dict
 
     CLS_TOKEN = tokenizer.cls_token_id
     PAD_TOKEN = tokenizer.pad_token_id
     MASK_TOKEN = tokenizer.mask_token_id
 
     random.seed(seed)  # fix random seed
+
+    print(keyword)
 
     tokens = dataset.tensors[0]
     labels = dataset.tensors[1]
@@ -94,9 +103,9 @@ def _masked_dataset(tokenizer, dataset, keyword=None,
                     if keyword is None:
                         m_label[i] = tok  # use full vocabulary
                     else:
-                        m_label[i] = keyword.index(tok)  # convert to keyword index
+                        m_label[i] = keyword[tok.item()] # convert to keyword index
 
-            if (keyword is not None) and (tok not in keyword):
+            if (keyword is not None) and (tok.item() not in keyword):
                 if random.random() < out_mask_ratio:  # randomly mask non-keywords
                     o_token[i] = MASK_TOKEN
 
