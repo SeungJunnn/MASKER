@@ -37,8 +37,8 @@ def _parse_args_train(parser):
     parser.add_argument("--use_biased_dataset", help='use biased dataset to train a biased model',
                         action='store_true')
     parser.add_argument("--optimizer", help='optimizer type (adam_ood|adam_gen)',
-                        choices=['adam_ood', 'adam_gen'],
-                        default='adam_ood', type=str)
+                        choices=['adam_vanilla', 'adam_masker'],
+                        default='adam_vanilla', type=str)
     parser.add_argument("--epochs", help='training epochs',
                         default=10, type=int)
 
