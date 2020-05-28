@@ -69,8 +69,6 @@ def _masked_dataset(tokenizer, dataset, keyword=None,
     for i,word in enumerate(keyword):
         keyword_dict[word]=i
 
-    print(keyword_dict)
-
     keyword=keyword_dict
 
     CLS_TOKEN = tokenizer.cls_token_id
@@ -78,9 +76,7 @@ def _masked_dataset(tokenizer, dataset, keyword=None,
     MASK_TOKEN = tokenizer.mask_token_id
 
     random.seed(seed)  # fix random seed
-
-    print(keyword)
-
+    
     tokens = dataset.tensors[0]
     labels = dataset.tensors[1]
 
