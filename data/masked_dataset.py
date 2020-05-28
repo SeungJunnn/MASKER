@@ -88,9 +88,8 @@ def _masked_dataset(tokenizer, dataset, keyword=None,
                 continue
             elif tok == PAD_TOKEN:
                 break
-
             if random.random() < key_mask_ratio:  # randomly mask keywords
-                if (keyword is None) or (tok in keyword):  # random MLM or keyword MLM
+                if (keyword is None) or (tok.item() in keyword):  # random MLM or keyword MLM
                     m_token[i] = MASK_TOKEN
                     if keyword is None:
                         m_label[i] = tok  # use full vocabulary
