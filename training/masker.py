@@ -37,7 +37,7 @@ def train_masker(args, loader, model, optimizer, epoch=0):
             out_cls = out_cls.squeeze()
             loss_cls = F.mse_loss(out_cls, labels_cls.float())
         else:
-            labels_cls = one_hot(label_cls, n_classes=n_classes)
+            labels_cls = one_hot(labels_cls, n_classes=n_classes)
             loss_cls = F.binary_cross_entropy_with_logits(out_cls, labels_cls)
 
         # self-supervision loss
