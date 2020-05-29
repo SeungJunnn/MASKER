@@ -64,6 +64,13 @@ def main():
         for ood_name, auroc in aurocs.items():
             print('auroc ({}): {:.2f}'.format(ood_name, auroc))
 
+    elif args.eval_type == 'regression':
+        dataset = get_base_dataset(args.test_dataset, tokenizer, args.split_ratio, args.seed, test_only=True)
+        test_loader = DataLoader(dataset.test_dataset, shuffle=False,
+                             batch_size=args.batch_size, num_workers=4)
+        corr = test_pearson(test_loader, model)
+        print('test corr: {:.2f}'.format(corr))
+
     else:
         raise ValueError('No matching eval type')
 
