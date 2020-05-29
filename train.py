@@ -80,7 +80,7 @@ def main():
 
         if args.classifier_type=='regression':
             corr = test_pearson(test_loader, model)
-            print('test corr: {:.2f}'.format(corr))
+            print('test corr: {:.4f}'.format(corr))
         else:
             acc = test_acc(test_loader, model)
             print('test acc: {:.2f}'.format(acc))
