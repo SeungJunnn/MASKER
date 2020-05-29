@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 
 from data import get_base_dataset
 from models import load_backbone, BaseNet
-from evals import test_acc, compute_aurocs
+from evals import test_acc, compute_aurocs, test_pearson
 
 from common import CKPT_PATH, parse_args
 
