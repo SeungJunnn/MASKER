@@ -69,7 +69,7 @@ def main():
         test_loader = DataLoader(dataset.test_dataset, shuffle=False,
                              batch_size=args.batch_size, num_workers=4)
         corr = test_pearson(test_loader, model)
-        print('test corr: {:.2f}'.format(corr))
+        print('test corr: {:.4f}'.format(corr))
 
     else:
         raise ValueError('No matching eval type')
