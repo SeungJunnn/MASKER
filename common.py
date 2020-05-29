@@ -64,7 +64,7 @@ def _parse_args_train(parser):
 
 def _parse_args_eval(parser):
     parser.add_argument("--eval_type", help='evaluation type (acc|ood)',
-                        choices=['acc', 'ood'],
+                        choices=['acc', 'ood', 'regression'],
                         default='acc', type=str)
     parser.add_argument("--model_path", help='path for the pre-trained model',
                         default=None, type=str)
