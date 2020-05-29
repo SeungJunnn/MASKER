@@ -23,9 +23,9 @@ def main():
         if args.keyword_type == 'random':
             args.batch_size = 4
         else:
-            args.batch_size = 16
+            args.batch_size = 8
     else:
-        args.batch_size = 32
+        args.batch_size = 16
 
     print('Loading pre-trained backbone network...')
     backbone, tokenizer = load_backbone(args.backbone)
