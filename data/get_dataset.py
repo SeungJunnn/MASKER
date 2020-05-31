@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 
 from data.base_dataset import NewsDataset, ReviewDataset, IMDBDataset, SST2Dataset, FoodDataset, ReutersDataset, MSRvidDataset, ImagesDataset, MSRparDataset, HeadlinesDataset
 from data.masked_dataset import MaskedDataset
+from data.biased_dataset import BiasedDataset
 from models import load_backbone
 
 from common import CKPT_PATH
