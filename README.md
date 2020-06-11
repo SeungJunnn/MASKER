@@ -1,17 +1,12 @@
 # MAKSER: Masked Keyword Regularization for X-BERTs
 
-PyTorch implementation of ["MASKER: Masked Keyword Regularization for Handling Keyword Bias on BERT"](https://...).
-
-The code was written by [Seungjoon Moon](https://github.com/SeungJunnn) and [Sangwoo Mo](https://github.com/sangwoomo).
-
+PyTorch implementation of ["MASKER: Masked Keyword Regularization for Handling Keyword Bias on BERT"].
 
 ## Setup
 
 ### Download base dataset
 
 Set `DATA_PATH` (default: `./dataset`) and `CKPT_PATH` (default: `./checkpoint`) from `common.py`.
-
-Download datasets from `GOOGLE_DRIVE_LINK (TBD)` and move them to `DATA_PATH`.
 Datafiles should be located in the corresponding directory `DATA_PATH/{data_name}`.
 For example, IMDB datafiles should be located in `DATA_PATH/imdb/imdb.txt`.
 
